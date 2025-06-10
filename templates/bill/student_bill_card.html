@@ -1,0 +1,460 @@
+<div class="page card p-0 mb-8" id="{{id}}" style="page-break-inside: avoid;page-break-after: avoid !important;       break-inside: avoid !important;">
+   <!-- begin::Body-->
+   <div class="card-body p-0">
+      <!-- begin::Wrapper-->
+      <div class="w-100" style="margin: 5px 0 0 5px; padding: 0;">
+         <!-- Header Section -->
+         <center style="margin-bottom: 3px; margin-top: 5px;">
+            <h2 style="margin: 0; padding: 0; font-size: 10px; font-weight: bold; line-height: 1.1;">
+               {{object.organization.org_name|default:""}}  
+            </h2>
+            <br>
+            <div class="company-details" style="font-size: 8px; margin: 1px 0; line-height: 1.1; font-weight: bold;">
+               {{object.organization.company_address|default:""}}
+            </div>
+            <div class="company-details" style="font-size: 8px; margin: 1px 0; line-height: 1.1; font-weight: bold;">
+               Phone: {{object.organization.company_contact_number|default:""}} | PAN: {{object.organization.tax_number|default:""}}
+            </div>
+            <div class="company-details" style="font-size: 8px; margin-bottom: 2px; line-height: 1.1; font-weight: bold;">
+               Bank: {{object.organization.bank|default:""}} | A/C: {{object.organization.account_no|default:""}}
+            </div>
+            <hr style="margin: 2px 0; border-color: #000;">
+            <h5 style="font-size: 10px; margin: 2px 0; font-weight: bold; line-height: 1.1;"> 
+              {% if not object.status %}
+              SALES RETURN
+              {% else %}
+                 {%if object.print_count == 1 %} {{name}} {%endif%}
+                 {% if object.print_count == 2 %} INVOICE {%endif%} 
+                 {%if object.print_count > 2 %} COPY OF ORIGINAL INVOICE - {{object.print_count|add:-2}} {%endif%}
+              {% endif %}
+           </h5>
+         </center>
+
+         <!-- begin::Header Info-->
+         <div class="row office-student-details" style="margin: 0; font-size: 8px; border: 1px solid #000; padding: 1px; margin-bottom: 3px;">
+            <div class="col" style="padding: 0 1px;">
+               <div><strong>Office:</strong> {{object.branch.name|default:""}}</div>
+               <div><strong>Inv No:</strong> {{object.invoice_number}}</div>
+               <div><strong>Date:</strong> {{object.transaction_date_time|date:"Y.m.d h:i a"}}</div>
+            </div>
+            <div class="col" style="padding: 0 1px; border-left: 1px solid #000;">
+               {% if object.customer.student_class == '' %}
+               <div><strong>Name:</strong> {{ object.customer.name|default:"" }}</div>
+               <div><strong>PAN:</strong> {{object.customer_tax_number|default:"-"}}</div>
+               {% else %}
+               <div><strong>Student:</strong> {{ object.customer.name }}, {{ object.customer.student_class }}/{{ object.customer.section }}</div>
+               <div><strong>Roll:</strong> {{object.customer.roll_no}}</div>
+               {% endif %}
+               <div><strong>Month:</strong> {{object.get_month_name|default:object.month}}</div>
+            </div>
+         </div>
+         
+         <!--begin::Body-->
+         <div style="margin-top: 3px;">
+            <!--begin::Table-->
+            <div class="table-responsive">
+               <table class="table" style="margin: 0; font-size: 8px; width: 100%; border-collapse: collapse;">
+                  <thead>
+                     <tr style="border-bottom: 1px solid #000;">
+                        <th style="padding: 1px; text-align: left; width: 30%; font-weight: bold;">ITEM</th>
+                        <th style="padding: 1px; text-align: center; width: 10%; font-weight: bold;">QTY</th>
+                        <th style="padding: 1px; text-align: center; width: 10%; font-weight: bold;">UNIT</th>
+                        <th style="padding: 1px; text-align: right; width: 25%; font-weight: bold;">RATE</th>
+                        <th style="padding: 1px; text-align: right; width: 25%; font-weight: bold;">AMOUNT</th>
+                     </tr> 
+                  </thead>
+                  <tbody>
+                      {%for item in object.bill_items.all%}
+                      <tr>
+                         <td style="padding: 1px; border-bottom: 1px dotted #000; vertical-align: top; font-weight: bold;">{{item.product_title}}</td>
+                         <td style="padding: 1px; text-align: center; border-bottom: 1px dotted #000; vertical-align: top; font-weight: bold;">{{item.product_quantity}}</td>
+                         <td style="padding: 1px; text-align: center; border-bottom: 1px dotted #000; vertical-align: top; font-weight: bold;">{{item.unit_title}}</td>
+                         <td style="padding: 1px; text-align: right; border-bottom: 1px dotted #000; vertical-align: top; font-weight: bold;">{{item.rate|floatformat:2}}</td>
+                         <td style="padding: 1px; text-align: right; border-bottom: 1px dotted #000; vertical-align: top; font-weight: bold;">{{item.amount|floatformat:2}}</td>
+                      </tr>
+                      {%endfor%}
+
+                      {% if object.adjusted_products %}
+                      <!-- Adjusted Items Section -->
+                      <tr>
+                          <td colspan="5" style="padding: 1px; text-align: left; border-bottom: 1px dashed #000; font-weight: bold;">
+                              <strong>ADJUSTED MEALS:</strong>
+                          </td>
+                      </tr>
+                      {% for adj in object.adjusted_products %}
+                      <tr>
+                          <td style="padding: 1px; border-bottom: 1px dashed #000; vertical-align: top; font-weight: bold;">
+                              {{ adj.product.title }}
+                          </td>
+                          <td style="padding: 1px; text-align: center; border-bottom: 1px dashed #000; vertical-align: top; font-weight: bold;">
+                              -1
+                          </td>
+                          <td style="padding: 1px; text-align: center; border-bottom: 1px dashed #000; vertical-align: top; font-weight: bold;">
+                              {{ adj.product.unit }}
+                          </td>
+                          <td style="padding: 1px; text-align: right; border-bottom: 1px dashed #000; vertical-align: top; font-weight: bold;">
+                              {{ adj.product.price|floatformat:2 }}
+                          </td>
+                          <td style="padding: 1px; text-align: right; border-bottom: 1px dashed #000; vertical-align: top; font-weight: bold;">
+                              -{{ adj.product.price|floatformat:2 }}
+                          </td>
+                      </tr>
+                      {% endfor %}
+                      {% endif %}
+                     
+                     <!-- Summary Rows -->
+                     <tr>
+                        <td colspan="3" style="padding: 1px; text-align: right; border-top: 1px solid #000; border-right: none; font-weight: bold;">Sub Total</td>
+                        <td colspan="2" style="padding: 1px; text-align: right; border-top: 1px solid #000; font-weight: bold;">{{object.sub_total|floatformat:2}}</td>
+                     </tr>
+                     <tr>
+                        <td colspan="3" style="padding: 1px; text-align: right; border-right: none; font-weight: bold;">Discount</td>
+                        <td colspan="2" style="padding: 1px; text-align: right; font-weight: bold;">{{object.discount_amount|floatformat:2}}</td>
+                     </tr>
+                     <tr>
+                        <td colspan="3" style="padding: 1px; text-align: right; border-right: none; font-weight: bold;">Taxable Amt</td>
+                        <td colspan="2" style="padding: 1px; text-align: right; font-weight: bold;">{{object.taxable_amount|floatformat:2}}</td>
+                     </tr>
+                     <tr>
+                        <td colspan="3" style="padding: 1px; text-align: right; border-right: none; font-weight: bold;">Tax Amt</td>
+                        <td colspan="2" style="padding: 1px; text-align: right; font-weight: bold;">{{object.tax_amount|floatformat:2}}</td>
+                     </tr>
+                     <tr>
+                        <td colspan="3" style="padding: 1px; text-align: right; border-top: 1px solid #000; border-bottom: 1px solid #000; border-right: none; font-weight: bold;">GRAND TOTAL</td>
+                        <td colspan="2" style="padding: 1px; text-align: right; border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: bold;">{{object.grand_total|floatformat:2}}</td>
+                     </tr>
+                  </tbody>
+               </table>
+               <div class = "grand-total-details" style="font-size: 8px; margin-top: 3px; text-align: right; font-weight: bold;">
+                  <div><strong>In Words:</strong> {{object.amount_in_words}}</div>
+                  <div><strong>Payment Mode:</strong> {{object.payment_mode}}</div>
+                  {% if reason %}
+                  <div><strong>Reason:</strong> {{reason}}</div>
+                  {% endif %}
+               </div>
+               <!-- Notes Section -->
+               <div class="student-notes" style="font-size: 7px; margin-top: 3px; padding: 1px; font-weight: bold;">
+                  <strong>Notes:</strong><br>
+                  - Mention student name/class when paying<br>
+                  - Send payment receipt to WhatsApp: 9709159645<br>
+                  - Adjusted meals are for holidays
+               </div>
+               <!-- Signature area -->
+               <div class="student-notes" style="display: flex; justify-content: center; margin-top: 5px; font-size: 8px; padding-top: 3px; border-top: 1px dashed #000; font-weight: bold;">
+                  <!--<div style="text-align: center; width: 45%;">-->
+                  <!--   __________________<br>-->
+                  <!--   Received By-->
+                  <!--</div>-->
+                  <div class="student-notes" style="text-align: center; width: 45%;">
+                     __________________<br>
+                     Dispatched By<br>
+                     {{request.user.full_name|truncatechars:15}}
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+
+<!-- <style>
+   @media print {
+       @page {
+           size: 3in;
+           margin: 5mm 5mm 5mm 5mm;
+       }
+
+       body {
+           margin: 0 !important;
+           padding: 0 !important;
+           font-family: 'Courier New', monospace !important;
+           font-size: 7px !important;
+           color: #000 !important;
+           width: 3in !important;
+       }
+
+       .page, .card {
+           width: 3in !important;
+           max-width: 3in !important;
+           page-break-after: avoid !important;
+           padding: 0 !important;
+           margin: 0 0 5mm 0 !important; /* Added bottom margin */
+           border: none !important;
+       }
+
+       .card-body {
+           padding: 0 !important;
+           margin: 0 !important;
+       }
+
+       * {
+           -webkit-print-color-adjust: exact !important;
+           print-color-adjust: exact !important;
+           overflow: visible !important;
+       }
+
+       center {
+           margin-bottom: 2px !important;
+           margin-top: 5px !important;
+       }
+
+       .table {
+           font-size: 6.5px !important;
+           width: 100% !important;
+           border-collapse: collapse !important;
+       }
+
+       .table th, .table td {
+           padding: 0.5px !important;
+           border: 0.5px dotted #000 !important;
+       }
+
+       td, th {
+           white-space: nowrap !important;
+           overflow: hidden !important;
+           text-overflow: ellipsis !important;
+       }
+
+       .row, .col {
+           margin: 0 !important;
+           padding: 0 0.5px !important;
+       }
+
+       h2, h5 {
+           font-size: 8px !important;
+       }
+
+       div {
+           line-height: 1.1 !important;
+       }
+   }
+</style> -->
+
+
+<!-- <style>
+   @media print {
+       @page {
+           size: 3in;
+           margin: 20mm 5mm 5mm 20mm;
+       }
+
+       body {
+           margin: 0 !important;
+           padding: 0 !important;
+           font-family: 'Courier New', monospace !important;
+           font-size: 14px !important;  /* Increased from 7px */
+           color: #000 !important;
+           width: 3in !important;
+       }
+
+       .page, .card {
+           width: 3in !important;
+           max-width: 3in !important;
+           page-break-after: avoid !important;
+           padding: 0 !important;
+           margin: 0 0 5mm 0 !important;
+           border: none !important;
+       }
+
+       .card-body {
+           padding: 0 !important;
+           margin: 0 !important;
+       }
+
+       * {
+           -webkit-print-color-adjust: exact !important;
+           print-color-adjust: exact !important;
+           overflow: visible !important;
+       }
+
+       center {
+           margin-bottom: 2px !important;
+           margin-top: 5px !important;
+       }
+
+       .table {
+           font-size: 10px !important;  /* Increased from 6.5px */
+           width: 100% !important;
+           border-collapse: collapse !important;
+       }
+
+       .table th, .table td {
+           padding: 1px !important;  /* Increased from 0.5px */
+           border: 0.5px dotted #000 !important;
+       }
+
+       td, th {
+           white-space: nowrap !important;
+           overflow: hidden !important;
+           text-overflow: ellipsis !important;
+       }
+
+       .row, .col {
+           margin: 0 !important;
+           padding: 0 1px !important;  /* Increased from 0.5px */
+       }
+
+       h2 {
+           font-size: 10px !important;  /* Increased from 8px */
+       }
+       
+       h5 {
+           font-size: 14px !important;  /* Increased from 8px */
+       }
+
+       div {
+           line-height: 1.2 !important;  /* Slightly increased from 1.1 */
+       }
+   }
+</style> -->
+
+<style>
+   @media print {
+       @page {
+           size: 3.8in;
+           margin: 0; /* No margins (full width of paper) */
+       }
+
+       body {
+           margin: 0 !important;
+           padding: 0 !important;
+           font-family: 'Courier New', monospace !important;
+           font-size: 14px !important;
+           color: #000 !important;
+           width: 3.8in !important;
+       }
+
+       .page, .card {
+           width: 3.8in !important;
+           max-width: 3.8in !important;
+           page-break-after: avoid !important;
+           padding: 0 !important;
+           margin: 0 0 5mm 0 !important;
+           border: none !important;
+           page-break-inside: avoid !important;
+           break-inside: avoid !important;
+       }
+
+       .card-body {
+           padding: 0 !important;
+           margin: 0 !important;
+       }
+
+       * {
+           -webkit-print-color-adjust: exact !important;
+           print-color-adjust: exact !important;
+           overflow: visible !important;
+       }
+
+       center {
+           margin-bottom: 2px !important;
+           margin-top: 5px !important;
+       }
+
+       .table {
+           font-size: 11px !important;
+           width: 100% !important;
+           border-collapse: collapse !important;
+       }
+
+       /* Column Widths - Applies to both regular and adjusted items */
+       .table th:nth-child(1), 
+       .table td:nth-child(1) {  /* ITEM column */
+           width: 36% !important;
+           max-width: 36% !important;
+           word-break: break-word !important;
+           white-space: normal !important;
+           padding-right: 1px !important;
+       }
+       
+       .table th:nth-child(2), 
+       .table td:nth-child(2) {  /* QTY column */
+           width: 10% !important;
+           text-align: center !important;
+       }
+       
+       .table th:nth-child(3), 
+       .table td:nth-child(3) {  /* UNIT column */
+           width: 16% !important;
+           text-align: center !important;
+       }
+       
+       .table th:nth-child(4), 
+       .table td:nth-child(4) {  /* RATE column */
+           width: 14% !important;
+           text-align: right !important;
+       }
+       
+       .table th:nth-child(5), 
+       .table td:nth-child(5) {  /* AMOUNT column */
+           width: 14% !important;
+           text-align: right !important;
+       }
+
+       /* Table cell styles */
+       .table th, .table td {
+           padding: 1px !important;
+           border: 0.5px dotted #000 !important;
+       }
+
+       /* Adjusted items specific styling */
+       .table tr.adjusted td {
+           border-bottom: 1px dashed #000 !important;
+       }
+
+       td, th {
+           overflow: hidden !important;
+           text-overflow: ellipsis !important;
+       }
+
+       .row, .col {
+           margin: 0 !important;
+           padding: 0 1px !important;
+       }
+
+       /* Header styles */
+       h2 {
+           font-size: 16px !important;
+           margin: 0 !important;
+           padding: 0 !important;
+       }
+       
+       h5 {
+           font-size: 14px !important;
+           margin: 2px 0 !important;
+       }
+
+       div {
+           line-height: 1.2 !important;
+       }
+
+       /* Signature area */
+       .signature-area {
+           display: flex !important;
+           justify-content: space-between !important;
+           margin-top: 5px !important;
+           font-size: 14px !important;
+           padding-top: 3px !important;
+           border-top: 1px dashed #000 !important;
+           font-weight: bold !important;
+       }
+
+       .office-student-details {
+           font-size: 12px !important;
+           font-weight: bold !important;
+       }
+       .student-notes{
+           font-size: 12px !important;
+           font-weight: bold !important; 
+       }
+
+       .grand-total-details{
+           font-size: 12px !important;
+           font-weight: bold !important;         
+       }
+       .company-details{
+           font-size: 12px !important;
+           font-weight: bold !important;  
+       }
+   }
+</style>

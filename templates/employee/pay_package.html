@@ -1,0 +1,581 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Pay Package Details{% endblock %}
+{% block home %} {% endblock %}
+{% block title %}Pay Package Details{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Package Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 22px;
+            margin: 0;
+        }
+        .content {
+            display: flex;
+            gap: 15px;
+        }
+        .employee-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            flex: 2;
+        }
+        .employee-details div {
+            font-size: 14px;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .employee-details .label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .employee-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .employee-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .form-section {
+            margin-top: 20px;
+        }
+        .form-section form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .form-section label {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .form-section input,
+        .form-section select,
+        .form-section button {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .table-section {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .submit-button,button {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .del-button{
+            margin-top: 10px;
+            padding: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .submit-button:hover {
+            background-color: #218838;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Pay Package Details</h2>
+        </div>
+        <h2>Employee Details</h2>
+        <div class="content">
+            <div class="employee-details" id="employeeDetails">
+                <!-- Employee details will be populated here -->
+            </div>
+            <div class="employee-image" id="employeeImage">
+                <!-- Employee image will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <h2>Pay Packages</h2>
+            <table id="payPackagedataTable">
+                <thead>
+                    <tr>
+                        <th>Package Name</th>
+                        <th>Amount</th>
+                        <th>Taxable</th>
+                        <th>Package Type</th>
+                        <th>Action</th> <!-- Added Action column -->
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data rows will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Form Section to Add Pay Package -->
+        <div class="form-section">
+            <h2>Add Pay Package</h2>
+            <form id="payPackageForm">
+                <div>
+                    <label for="packageName">Package Name</label>
+                    <select id="packageName" required onchange="updateSelectedPackageId()">
+                        <option value="" disabled selected>Select a package</option>
+                    </select>
+                    
+                </div>
+                <div>
+                    <label for="amount">Amount</label>
+                    <input type="number" id="amount" step="0.01" required>
+                </div>
+                <div>
+                    <label for="taxable">Taxable</label>
+                    <input type="checkbox" id="taxable">
+                </div>
+                <div>
+                    <label for="paymentType">Package Type</label>
+                    <select id="paymentType" required>
+                        <option value="monthly">Monthly</option>
+                        <option value="one-time">One-Time</option>
+                    </select>
+                </div>
+                
+                <button type="button" onclick="addPackage()">Add</button>
+            </form>
+        </div>
+        
+
+        <div class="table-section">
+            <h2>Pay Packages</h2>
+            <table id="payPackageTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Package Name</th>
+                        <th>Amount</th>
+                        <th>Taxable</th>
+                        <th>Package Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data rows will be added here -->
+                </tbody>
+            </table>
+            <button class="submit-button" onclick="submitPackages()">Submit Packages</button>
+        </div>
+    </div>
+
+    <script>
+        const globalUrl = "{{ url }}";
+        const url = `${globalUrl}{% url 'search-employee' %}`;
+        let employeeId = localStorage.getItem('selectedEmployeeId');
+
+
+        // Fetch CSRF token
+        const getCSRFToken = () => {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith('csrftoken=')) {
+                    return cookie.substring('csrftoken='.length, cookie.length);
+                }
+            }
+            return null;
+        };
+    
+        // Fetching and populating package names in dropdown with the corresponding IDs in localStorage
+async function fetchPackages() {
+    const apiUrl = `${globalUrl}/api/masterpaypackage-list/`; 
+    const packageNameDropdown = document.getElementById("packageName");
+
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error("Failed to fetch packages");
+
+        const packages = await response.json();
+
+        packageNameDropdown.innerHTML = '<option value="" disabled selected>Select a package</option>';
+        packages.forEach(pkg => {
+            const option = document.createElement("option");
+            option.value = pkg.package_name; // Use the package name as the value
+            option.dataset.id = pkg.id;  // Store the package ID in a data attribute
+            option.textContent = pkg.package_name; // Display package name in the dropdown
+            packageNameDropdown.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error fetching packages:", error);
+        packageNameDropdown.innerHTML = '<option value="" disabled>Error loading packages</option>';
+    }
+}
+function updateSelectedPackageId() {
+    const packageNameDropdown = document.getElementById("packageName");
+    const selectedOption = packageNameDropdown.options[packageNameDropdown.selectedIndex];
+
+    // Retrieve the package ID stored in the data-id attribute of the selected option
+    const selectedPackageId = selectedOption ? selectedOption.dataset.id : null;
+
+    if (selectedPackageId) {
+        // Store the package ID in localStorage
+        localStorage.setItem("selectedPackageId", selectedPackageId);
+        console.log(`Stored Package ID: ${selectedPackageId}`);
+    } else {
+        console.log("No valid package selected.");
+    }
+}
+
+
+// Optional: Store the package ID when the "Add" button is clicked
+function addPackage() {
+    const selectedPackageId = localStorage.getItem("selectedPackageId");
+
+    if (selectedPackageId) {
+        // Perform any additional actions with the selected package ID, such as sending it to the backend.
+        console.log("Package ID to be added:", selectedPackageId);
+    } else {
+        console.log("No package selected.");
+    }
+}
+
+
+    // Call function on page load
+    document.addEventListener("DOMContentLoaded", fetchPackages);
+
+        // Fetch employee data by ID
+        async function fetchEmployeeById(id) {
+            if (!id) {
+                alert("No employee ID found in local storage.");
+                return;
+            }
+
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                alert("CSRF token not found. Please reload the page.");
+                return;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({ emp_id: id }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch employee data');
+                }
+
+                const employee = await response.json();
+                displayEmployeeDetails(employee);
+            } catch (error) {
+                console.error('Error:', error);
+                alert("Error fetching employee data.");
+            }
+        }
+
+        // Display employee details
+        function displayEmployeeDetails(employee) {
+            const employeeDetailsContainer = document.getElementById('employeeDetails');
+            const employeeImageContainer = document.getElementById('employeeImage');
+            const tableBody = document.getElementById('payPackagedataTable').querySelector('tbody');
+
+            // Populate employee details
+            employeeDetailsContainer.innerHTML = `
+                <div><span class="label">Name:</span> ${employee.name}</div>
+                <div><span class="label">Address:</span> ${employee.address}</div>
+                <div><span class="label">Country:</span> ${employee.country}</div>
+                <div><span class="label">DOB:</span> ${employee.dob}</div>
+                <div><span class="label">Hiring Date:</span> ${employee.hiring_date || 'N/A'}</div>
+                <div><span class="label">Employee Type:</span> ${employee.type || 'N/A'}</div>
+                <div><span class="label">Marital Status:</span> ${employee.marital_status || 'N/A'}</div>
+                <div><span class="label">Current Status:</span> ${employee.current_status || 'N/A'}</div>
+                <div><span class="label">Level:</span> ${employee.level || 'N/A'}</div>
+                <div><span class="label">Termination Date:</span> ${employee.termination_date || 'N/A'}</div>
+                <div><span class="label">Shift:</span> ${employee.shift || 'N/A'}</div>
+                <div><span class="label">Attendance Required:</span> ${employee.attendance_required ? 'Yes' : 'No'}</div>
+                <div><span class="label">Late Attendance Alert:</span> ${employee.lateattendance_alert ? 'Yes' : 'No'}</div>
+            `;
+
+            // Populate employee image (if available)
+            employeeImageContainer.innerHTML = employee.pic
+                ? `<img src="${employee.pic}" alt="Employee Picture">`
+                : '<p>No image available</p>';
+
+
+
+                
+            // Populate pay packages
+            tableBody.innerHTML = employee.pay_packages
+                .map(pkg => `
+                    <tr>
+                        <td>${pkg.package_name}</td>
+                        <td>${parseFloat(pkg.amount).toFixed(2)}</td>
+                        <td>${pkg.taxable ? 'Yes' : 'No'}</td>
+                        <td>${pkg.package_type}</td>
+                        <td><button class="del-button" onclick="deletePackage(${pkg.id})">Delete</button></td> <!-- Added Delete button -->
+                    </tr>
+                `)
+                .join('');
+        }
+        let packages = []; // Initialize the packages array
+
+// Function to render the package table
+function renderTable() {
+    const tableBody = document.getElementById('payPackageTable').querySelector('tbody');
+    
+    tableBody.innerHTML = packages.map(pkg => `
+        <tr>
+
+            <td>${pkg.package_name}</td>
+            <td>${pkg.amount.toFixed(2)}</td>
+            <td>${pkg.taxable ? 'Yes' : 'No'}</td>
+            <td>${pkg.package_type}</td>
+        </tr>
+    `).join('');
+}
+
+// Add a pay package
+function addPackage() {
+    const package_name = document.getElementById('packageName').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const taxable = document.getElementById('taxable').checked;
+    const package_type = document.getElementById('paymentType').value;
+
+    if (package_name && !isNaN(amount) && package_type) {
+        // Add the new package to the packages array
+        packages.push({ package_name, amount, taxable, package_type });
+
+        // Clear the form
+        document.getElementById('payPackageForm').reset();
+
+        // Render the table with updated data
+        renderTable();
+    } else {
+        alert("Please fill out all fields correctly.");
+    }
+}
+
+// Initialize the page by fetching the employee's data
+fetchEmployeeById(employeeId);
+        // Delete a pay package
+        async function deletePackage(packageId) {
+            if (confirm("Are you sure you want to delete this package?")) {
+                const csrfToken = getCSRFToken();
+
+                try {
+                   const response = await fetch(`${globalUrl}/api/paypackage-remove/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: JSON.stringify({ package_id: packageId }), // Send package ID to API
+                    });
+
+                    if (response.ok) {
+                        alert("Package deleted successfully!");
+                        location.reload(); // Reload page to update the table
+                    } else {
+                        throw new Error("Failed to delete package.");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert("Error deleting package.");
+                }
+            }
+        }
+
+        // Add a pay package
+        function addPackage() {
+            const package_name = document.getElementById('packageName').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const taxable = document.getElementById('taxable').checked;
+            const package_type = document.getElementById('paymentType').value;
+
+            if (package_name && !isNaN(amount) && package_type) {
+               
+                // Add the new package to the array
+                packages.push({ package_name, amount, taxable, package_type });
+
+                // Clear the form
+                document.getElementById('payPackageForm').reset();
+
+                // Render the table with updated data
+                renderTable();
+            } else {
+                alert("Please fill out all fields correctly.");
+            }
+        }
+        let apiPackages = []; 
+
+
+async function fetchApiPackages() {
+    const apiUrl = `${globalUrl}/api/masterpaypackage-list/`;
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error("Failed to fetch API packages");
+
+        apiPackages = await response.json(); 
+    } catch (error) {
+        console.error("Error fetching API packages:", error);
+    }
+}
+
+
+function renderTable() {
+    const tableBody = document.getElementById('payPackageTable').querySelector('tbody');
+
+    tableBody.innerHTML = packages.map((pkg) => {
+
+        const matchedPackage = apiPackages.find(
+            (apiPkg) => apiPkg.package_name === pkg.package_name
+        );
+
+        const idToUse = matchedPackage ? matchedPackage.id : "Not Found";
+
+        return `
+            <tr>
+                <td style="background-color: #f0f0f0; color: #777; font-weight: bold;" class="fixed-id">${idToUse}</td>
+                <td>${pkg.package_name}</td>
+                <td>${pkg.amount.toFixed(2)}</td>
+                <td>${pkg.taxable ? 'Yes' : 'No'}</td>
+                <td>${pkg.package_type}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function initializeTable() {
+    await fetchApiPackages(); 
+    renderTable(); 
+}
+
+initializeTable();
+
+       async function submitPackages() {
+    // Check if there are packages to submit
+    if (packages.length === 0) {
+        alert("No packages to submit.");
+        return;
+    }
+
+    // Retrieve employee ID from localStorage
+    const employeeId = localStorage.getItem('selectedEmployeeId');
+    if (!employeeId) {
+        alert("No employee ID found in local storage.");
+        return;
+    }
+
+    try {
+       
+        if (apiPackages.length === 0) {
+            await fetchApiPackages(); 
+        }
+
+ 
+        const packagesWithId = packages.map(pkg => {
+          
+            const matchedPackage = apiPackages.find(
+                (apiPkg) => apiPkg.package_name === pkg.package_name
+            );
+
+            const idToUse = matchedPackage ? matchedPackage.id : null;
+
+            return {
+                package: idToUse, 
+                empID: employeeId,
+                package_name: pkg.package_name,
+                amount: pkg.amount,
+                taxable: pkg.taxable,
+                package_type: pkg.package_type,
+            };
+        });
+
+       
+        if (packagesWithId.some(pkg => pkg.package === null)) {
+            alert("Some packages have invalid or missing IDs.");
+            return;
+        }
+
+        // Make the POST request
+        const globalUrl = "{{ url }}";
+        const response = await fetch(`${globalUrl}{% url 'paypackage-create' %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify(packagesWithId), 
+        });
+
+   
+        if (response.ok) {
+            alert("Packages submitted successfully!");
+            packages.length = 0;
+            renderTable(); 
+        } else {
+            throw new Error("Failed to submit packages.");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Error submitting packages.");
+    }
+}
+
+        fetchEmployeeById(employeeId);
+    </script>
+</body>
+</html>
+
+{% endblock %}

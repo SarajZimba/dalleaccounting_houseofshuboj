@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Receipts{% endblock %}
+{% load tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Receipts</h2>
+
+    <!-- Search Form -->
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-auto">
+            <input type="text" name="q" class="form-control" placeholder="Search by Receipt Number" value="{{ request.GET.q }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if request.GET.q %}
+                <a href="{% url 'receipt_list' %}" class="btn btn-secondary">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- Search Result Info -->
+    {% if request.GET.q %}
+        <p class="text-muted">Showing results for "<strong>{{ request.GET.q }}</strong>"</p>
+    {% endif %}
+
+    <!-- Receipt Table -->
+    {% if receipts %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Receipt No</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Received From</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for receipt in receipts %}
+                    <tr>
+                        <td>{{ receipt.receipt_number }}</td>
+                        <td>{{ receipt.transaction_date }}</td>
+                        <td>{{ receipt.grand_total }}</td>
+                        <td>{{ receipt.received_from_ledger.name }}</td>
+                        <td>
+                            <a href="{% url 'receipt_card' receipt.id %}" target="_blank" class="btn btn-sm btn-outline-info">View / Print</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            No receipts found.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

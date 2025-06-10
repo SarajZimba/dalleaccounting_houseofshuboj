@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Individual Salary Slip{% endblock %}
+{% block home %} {% endblock %}
+{% block title %}Individual Salary Slip{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Employee Salary Sheet</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #000;
+            text-align: center;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        td {
+            text-align: right;
+        }
+        .export-button {
+            margin: 10px 0;
+            float: left;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .export-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="employee-salary-heading"></h1>
+    <div id="salary-data-container"></div>
+
+    <!-- <button class="export-button" onclick="exportTableToExcel('salary-table', 'Employee_Salary_Sheet')">Export to Excel</button> -->
+
+    <script>
+        const globalUrl = "{{ url }}";
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const selectedEmpID = localStorage.getItem("selectedEmpID");
+        
+        if (!selectedEmpID) {
+            alert("No employee selected, unable to display salary details.");
+        }
+        async function fetchEmployeeSalaryData() {
+            const apiUrl = `${globalUrl}/api/get_employee_oneyearmonthwisesalarysheet/`;
+            const requestBody = {
+                empID: selectedEmpID
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken  // Include CSRF token
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayEmployeeSalary(data);
+            } catch (error) {
+                console.error("Error fetching employee salary data:", error);
+                alert("Error fetching employee salary data.");
+            }
+        }
+
+        // Display salary data (table) for the employee, for each month
+        function displayEmployeeSalary(data) {
+            const salaryDataContainer = document.getElementById("salary-data-container");
+
+            if (!data || !data[0].response_list || data[0].response_list.length === 0) {
+                salaryDataContainer.innerHTML = "<p>No salary data available for this employee.</p>";
+                return;
+            }
+
+            const monthData = data[0];
+            const monthTable = document.createElement("table");
+            const monthHeading = document.createElement("h2");
+            monthHeading.textContent = `Salary Sheet for ${monthData.month}`;
+            
+
+            const tableHeaders = [
+                "S/N", "Name of Employee", "Basic Salary", "Food Allowance", "Rental Allowance",
+                "Unpaid Leave Deduction", "Unpaid Leaves", "Total Salary", "FUND DEDUCTIONS", 
+                "SST", "Income Tax", "Total Tax", "Net Payable"
+            ];
+
+            const tableHeaderRow = document.createElement("tr");
+            tableHeaders.forEach(header => {
+                const th = document.createElement("th");
+                th.textContent = header;
+                tableHeaderRow.appendChild(th);
+            });
+            monthTable.appendChild(tableHeaderRow);
+
+            monthData.response_list.forEach((employee, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                   <td>${index + 1}</td>
+                   <td>${employee.name}</td>
+                    <td>${parseFloat(employee.total_gross_salary.paypackages.find(pkg => pkg.package_name === 'Basic Salary')?.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.total_gross_salary.paypackages.find(pkg => pkg.package_name === 'Food Allowance')?.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.total_gross_salary.paypackages.find(pkg => pkg.package_name === 'Rental Allowance')?.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.leave_deductions.unpaid_leavesdeduction).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.leave_deductions.unpaid_leaves).toLocaleString('en-US', { minimumFractionDigits:0 })}</td>
+                    <td>${parseFloat(employee.total_gross_salary.total_salary).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${employee.fund_deductions.map(fd => parseFloat(fd.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })).join(', ')}</td>
+                    <td>${parseFloat(employee.tax_deduction.find(td => td.name === 'SST')?.Total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.tax_deduction.find(td => td.name === 'Income Tax')?.Total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.tax_deduction.find(td => td.name === 'Total Tax')?.Total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td>${parseFloat(employee.net_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+
+                `;
+                monthTable.appendChild(row);
+            });
+
+            salaryDataContainer.appendChild(monthHeading);
+            salaryDataContainer.appendChild(monthTable);
+        }
+
+        // Function to export the current salary table to Excel
+        // function exportTableToExcel(tableId, filename = '') {
+        //     const downloadLink = document.createElement('a');
+        //     const dataType = 'application/vnd.ms-excel';
+        //     const table = document.getElementById(tableId).outerHTML;
+
+        //     // Apply inline CSS to style the table
+        //     const exportHTML = `
+        //         <html>
+        //         <head>
+        //             <style>
+        //                 table, th, td {
+        //                     border: 1px solid black;
+        //                     border-collapse: collapse;
+        //                     text-align: center;
+        //                     padding: 5px;
+        //                 }
+        //                 th {
+        //                     background-color: #f2f2f2;
+        //                 }
+        //             </style>
+        //         </head>
+        //         <body>
+        //             ${table}
+        //         </body>
+        //         </html>
+        //     `;
+
+        //     filename = filename ? filename + '.xls' : 'excel_data.xls';
+
+        //     downloadLink.href = `data:${dataType}, ${encodeURIComponent(exportHTML)}`;
+        //     downloadLink.download = filename;
+        //     document.body.appendChild(downloadLink);
+        //     downloadLink.click();
+        //     document.body.removeChild(downloadLink);
+        // }
+
+        // Trigger the data fetching function when page loads
+        fetchEmployeeSalaryData();
+    </script>
+</body>
+</html>
+{% endblock %}

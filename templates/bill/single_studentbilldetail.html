@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ object.org_name }}
+{% endblock title %}
+
+{% block content %}
+<style>
+    @media print {
+        @page {
+            size: A5 portrait;
+            scale: 0.6;
+            margin: 5 mm; /* This affects the margin in the printer settings */
+            border: 1px solid red; /* Set a border for all printed pages */
+        }
+    }
+</style>
+
+<!-- Begin Footer -->
+<div class="d-flex flex-stack flex-wrap mt-lg-20 pt-13">
+    <!-- Begin Actions -->
+    <div class="my-1 me-5">
+        <!-- Begin Print -->
+        <button type="button" class="btn btn-success my-1 me-12" onclick="printAllBills();">Print All Bills</button>
+        {% if bill.status %}
+            <button type="button" class="btn btn-danger my-1 me-12" data-bs-toggle="modal" data-bs-target="#kt_modal_1">Void Invoice</button>
+        {% endif %}
+        <!-- End Print -->
+    </div>
+    <!-- End Actions -->
+</div>
+<!-- End Footer -->
+
+<!-- Wrap all bills in a container div -->
+<div id="bills-container">
+        {% if not bill.status %}
+            {% include './student_bill_card.html' with object=bill name="Sales Return" id="invoice-card-{{ bill.pk }}" %}
+        {% elif bill.print_count == 1 %}
+            {% if bill.payment_mode|lower == "complimentary" %}
+                {% include './student_bill_card.html' with object=bill name="Complimentary" id="invoice-card-{{ bill.pk }}" %}
+            {% else %}
+                {% include './student_bill_card.html' with object=bill name="Tax Invoice" id="tax-invoice-card-{{ bill.pk }}" %}
+                {% include './student_bill_card.html' with object=bill name="Invoice" id="invoice-card-{{ bill.pk }}" %}
+            {% endif %}
+        {% else %}
+            {% include './student_bill_card.html' with object=bill name="Invoice" id="invoice-card-{{ bill.pk }}" %}
+        {% endif %}
+</div>
+
+<script>
+    // Function to print all bills
+    function printAllBills() {
+        console.log("Print clicked");
+
+        var billsContainer = document.getElementById('bills-container');
+        if (billsContainer) {
+            var printContents = billsContainer.innerHTML;
+
+            if (printContents) {
+                // Store original content
+                var originalContents = document.body.innerHTML;
+                document.body.innerHTML = printContents;
+                
+                // Trigger the print action
+                window.print();
+
+                // After printing, restore the original content
+                document.body.innerHTML = originalContents;
+            } else {
+                console.error("No bills found to print.");
+            }
+        }
+    }
+
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                html: "{{ message }}",
+                icon: "success",
+                buttonsStyling: false,
+                confirmButtonText: "Ok, got it!",
+                customClass: {
+                    confirmButton: "btn btn-primary",
+                },
+            })
+        {% endfor %}
+    {% endif %}
+</script>
+
+{% endblock %}

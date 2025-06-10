@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Receipt {{ receipt.receipt_number }}{% endblock %}
+
+{% block content %}
+<head>
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #receipt-container, #receipt-container * {
+        visibility: visible;
+    }
+    #receipt-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 4in !important;
+        height:4in !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        font-size: 14px !important; 
+        font-family: 'Courier New', monospace !important;
+        font-weight: bolder !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+
+    .flex-line {
+        flex-wrap: wrap;  /* Allow line breaks if needed */
+        margin-top: 4px !important;
+    }
+    
+    .dotted-underline {
+        border-bottom: 1px dotted #000;
+        flex-grow: 1;
+        margin-left: 10px;
+        padding-bottom: 2px;
+    }
+    h2 {
+        font-size: 16px !important;
+        margin-bottom: 5px !important;
+    }
+    p {
+        margin: 2px 0 !important;
+        line-height: 1.2 !important;
+    }
+    img {
+        height: 40px !important;
+    }
+    /* Adjust spacing for print */
+    div {
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
+    }
+    /* Amount box */
+    div[style*="border: 1px solid black; width: 200px"] {
+        width: 100% !important;
+        padding: 5px !important;
+        margin-top: 10px !important;
+    }
+
+    /* #footer {
+        margin-top: 50px;
+    } */
+
+    .footer-content{
+        padding-top: 31px !important;
+    }
+}
+</style>
+</head>
+
+<body>
+<div id="receipt-container" style="width: 800px; margin: auto; border: 1px solid black; padding: 20px; font-family: 'Arial', sans-serif;">
+    <!-- Header -->
+    <div style="text-align: center; border-bottom: 1px solid black; padding-bottom: 10px;">
+        {% if org.org_logo %}
+            <img src="{{ org.org_logo.url }}" alt="Logo" style="height: 60px;">
+        {% endif %}
+        <h2 style="margin: 0;">{{ org.org_name }}</h2>
+        <p style="margin: 0;">{{ org.company_address|default:"" }}</p>
+        <p style="margin: 0;">Tel: {{ org.company_contact_number|default:"" }} | Email: {{ org.company_contact_email|default:"" }}</p>
+    </div>
+
+    <!-- Receipt Info -->
+    <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <p>S. No.: {{ receipt.receipt_number }}</p>
+        <p>Date: {{ receipt.transaction_date }}</p>
+    </div>
+
+    <!-- Body -->
+    <div style="margin-top: 10px;">
+        <div class="flex-line">
+            <span>Received with thanks from:</span>
+            <span class="dotted-underline">{{ receipt.received_from_ledger.ledger_name }}</span>
+        </div>
+
+        <div class="flex-line">
+            <span>The sum of Rupees:</span>
+            <span class="dotted-underline">{{ receipt.amount_in_words }}</span>
+        </div>
+
+        <div class="flex-line">
+            <span>Drawn on:</span>
+            <span class="dotted-underline">{{ receipt.transaction_date }}</span>
+        </div>
+
+        <div class="flex-line">
+            <span>On account of:</span>
+            <span class="dotted-underline">{{ org.org_name }}</span>
+        </div>
+    </div>
+
+    <!-- Amount -->
+    <div style="margin-top: 20px; border: 1px solid black; width: 200px; padding: 10px;">
+        <strong>Rs. {{ receipt.grand_total }}</strong>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 40px; text-align: right;" id="footer">
+        <p class="footer-content">For, {{ org.org_name }}</p>
+    </div>
+</div>
+
+<!-- Print Button -->
+<div class="no-print" style="text-align: center; margin-top: 20px;">
+    <button onclick="window.print()">Print Receipt</button>
+</div>
+
+</body>
+{% endblock %}

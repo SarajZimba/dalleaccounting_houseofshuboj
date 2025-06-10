@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block pagetitle %}CIT{% endblock %}
+{% block home %} {% endblock %}
+{% block title %}CIT{% endblock %}
+
+{% block content %}
+<html>
+    <head>
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="container">
+            <h3>Add CIT Records</h3>
+            <form id="cit-form">
+                <table class="table table-bordered" id="cit-form-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- The dynamically added CIT rows will be inserted here -->
+                    </tbody>
+                </table>
+                <button type="button" id="add-row-btn" class="btn btn-primary">+ Add Row</button>
+                <br><br>
+                <button type="submit" class="btn btn-success">Submit All</button>
+            </form>
+        </div>
+        
+        <script>
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const employeeSelectAPI = '/api/get-all-employees/';  // Replace with your actual API endpoint for fetching employees
+                const formTable = document.getElementById('cit-form-table').getElementsByTagName('tbody')[0];
+                const addRowBtn = document.getElementById('add-row-btn');
+                const citForm = document.getElementById('cit-form');
+                
+                let employeeData = [];
+                let employeeSelections = []; // Store selected employee IDs
+                
+                // Fetch employees on page load
+                async function fetchEmployees() {
+                    const response = await fetch(employeeSelectAPI);
+                    const data = await response.json();
+                    employeeData = data.employees;  // Store the employee list in a variable
+                    
+                    renderEmployeeSelectOptions();  // Render the employee select options
+                }
+                
+                function renderEmployeeSelectOptions() {
+                    const employeeOptions = employeeData.map(employee => {
+                        return `<option value="${employee.id}">${employee.name}</option>`;
+                    }).join('');
+                    
+                    // Update all employee select inputs in the table with the new options
+                    const employeeSelectElements = document.querySelectorAll('.employee-select');
+                    employeeSelectElements.forEach((select, index) => {
+                        const selectedEmployee = employeeSelections[index];
+                        select.innerHTML = `<option value="">Select Employee</option>${employeeOptions}`;
+                        if (selectedEmployee) {
+                            select.value = selectedEmployee; // Pre-select the previously selected employee
+                        }
+                    });
+                }
+                
+                // Add a new row with Employee select and Amount input
+                addRowBtn.addEventListener('click', () => {
+                    const rowIndex = formTable.rows.length;  // Get the current number of rows in the table
+                    
+                    const newRow = formTable.insertRow();
+                    newRow.innerHTML = `
+                        <td>
+                            <select class="form-control employee-select" name="employee-${rowIndex}" required>
+                                <option value="">Select Employee</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" name="amount-${rowIndex}" required min="0" step="0.01">
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger delete-row-btn">Delete</button>
+                        </td>
+                    `;
+                    
+                    // Re-render employee select options for the newly added row
+                    renderEmployeeSelectOptions();
+                    
+                    // Add event listener to the delete button
+                    newRow.querySelector('.delete-row-btn').addEventListener('click', () => {
+                        formTable.deleteRow(newRow.rowIndex);  // Delete the clicked row
+                        // Update employeeSelections after row is deleted
+                        employeeSelections.splice(newRow.rowIndex, 1);
+                        renderEmployeeSelectOptions(); // Re-render after deletion
+                    });
+
+                    // Update employeeSelections array when an employee is selected
+                    newRow.querySelector('.employee-select').addEventListener('change', (e) => {
+                        employeeSelections[rowIndex] = e.target.value; // Store selected employee ID
+                    });
+                    
+                    // Ensure employee selection is preserved for new row
+                    if (employeeSelections[rowIndex]) {
+                        newRow.querySelector('.employee-select').value = employeeSelections[rowIndex];
+                    }
+                });
+                
+                // Handle form submission
+                citForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const formData = [];
+                    
+                    // Collect the data from all the form rows
+                    for (let i = 0; i < formTable.rows.length; i++) {
+                        const row = formTable.rows[i];
+                        const employeeSelect = row.querySelector('.employee-select');
+                        const amountInput = row.querySelector('input');
+                        
+                        const employeeId = employeeSelect.value;
+                        const amount = parseFloat(amountInput.value);
+                        
+                        if (employeeId && amount) {
+                            formData.push({ empID: employeeId, amount: amount });
+                        }
+                    }
+                    
+                    // Send the data to the backend via the POST API
+                    const response = await fetch('/api/employee-cit/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken  // Include CSRF token
+                        },
+                        body: JSON.stringify(formData),
+                    });
+                    
+                    if (response.ok) {
+                        alert('CIT records added successfully!');
+                        // Optionally, clear the form or reset the table after successful submission
+                        formTable.innerHTML = '';
+                        employeeSelections = [];  // Reset employee selections
+                    } else {
+                        alert('Failed to add CIT records.');
+                    }
+                });
+                
+                // Fetch employees when the page loads
+                fetchEmployees();
+            });
+        </script>
+    </body>
+</html>
+{% endblock %}

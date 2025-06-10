@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ object.org_name }}
+{% endblock title %}
+
+{% block content %}
+
+<!-- Filter Form -->
+<div class="filter-section">
+    <form method="get" action="">
+        <!-- Student Name Search -->
+        <div class="mb-3">
+            <label for="studentName" class="form-label">Search by Student Name</label>
+            <input type="text" name="student_name" id="studentName" class="form-control" 
+                   placeholder="Enter student name" value="{{ request.GET.student_name|default:'' }}">
+        </div>
+        
+        <!-- Class Dropdown -->
+        <div class="mb-3">
+            <label for="studentClass" class="form-label">Select Class</label>
+            <select name="student_class" id="studentClass" class="form-control" onchange="fetchSections(this.value)">
+                <option value="">Select a Class</option>
+                {% for class_item in distinct_classes %}
+                    <option value="{{ class_item.student_class }}" 
+                            {% if request.GET.student_class == class_item.student_class|stringformat:"s" %}selected{% endif %}>
+                        {{ class_item.student_class }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- Section Dropdown -->
+        <div class="mb-3">
+            <label for="studentSection" class="form-label">Select Section</label>
+            <select name="student_section" id="studentSection" class="form-control" {% if not request.GET.student_class %}disabled{% endif %}>
+                <option value="">Select a Section</option>
+                {% if request.GET.student_class %}
+                    {% for section in sections_for_class %}
+                        <option value="{{ section }}" {% if request.GET.student_section == section %}selected{% endif %}>
+                            {{ section }}
+                        </option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="month" class="form-label">Select Month</label>
+            <select name="month" id="monthFilter" class="form-control">
+                <option value="">All Months</option>
+                {% for month_num, month_name in months %}
+                    <option value="{{ month_num }}" 
+                            {% if request.GET.month == month_num|stringformat:"s" %}selected
+                            {% elif not request.GET.month and month_num == current_month %}selected{% endif %}>
+                        {{ month_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+       
+        <div class="mb-3">
+            <label for="year" class="form-label">Select Year</label>
+            <select name="year" id="yearFilter" class="form-control">
+                <option value="">All Years</option>
+                {% for year in years %}
+                    <option value="{{ year }}" 
+                            {% if request.GET.year == year|stringformat:"s" %}selected
+                            {% elif not request.GET.year and year == current_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="d-flex">
+            <button type="submit" class="btn btn-primary me-2">Filter Bills</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">Clear Filters</button>
+        </div>
+    </form>
+</div>
+
+<!-- Bills Container -->
+<div id="bills-container">
+    {% for bill in bills %}
+        {% if not bill.status %}
+            {% include './student_bill_card.html' with object=bill name="Sales Return" id="invoice-card-{{ bill.pk }}" %}
+        {% elif bill.print_count == 1 %}
+            {% if bill.payment_mode|lower == "complimentary" %}
+                {% include './student_bill_card.html' with object=bill name="Complimentary" id="invoice-card-{{ bill.pk }}" %}
+            {% else %}
+                {% include './student_bill_card.html' with object=bill name="Tax Invoice" id="tax-invoice-card-{{ bill.pk }}" %}
+                {% include './student_bill_card.html' with object=bill name="Invoice" id="invoice-card-{{ bill.pk }}" %}
+            {% endif %}
+        {% else %}
+            {% include './student_bill_card.html' with object=bill name="Invoice" id="invoice-card-{{ bill.pk }}" %}
+        {% endif %}
+    {% empty %}
+        <div class="alert alert-info">No bills found for the selected criteria.</div>
+    {% endfor %}
+</div>
+
+<!-- Begin Footer -->
+<div class="d-flex flex-stack flex-wrap mt-lg-20 pt-13">
+    <!-- Begin Actions -->
+    <div class="my-1 me-5">
+        <!-- Begin Print -->
+        <button type="button" class="btn btn-success my-1 me-12" onclick="printAllBills();">Print All Bills</button>
+        {% if bill.status %}
+            <button type="button" class="btn btn-danger my-1 me-12" data-bs-toggle="modal" data-bs-target="#kt_modal_1">Void Invoice</button>
+        {% endif %}
+        <!-- End Print -->
+    </div>
+    <!-- End Actions -->
+</div>
+<!-- End Footer -->
+
+<script>
+    // Function to load sections for a class
+    function loadSections(studentClass) {
+        const sectionSelect = document.getElementById('studentSection');
+        sectionSelect.innerHTML = '<option value="">Loading sections...</option>';
+        sectionSelect.disabled = true;
+
+        if (studentClass) {
+            fetch(`/api/sections/?student_class=${studentClass}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const currentSection = "{{ request.GET.student_section|escapejs }}";
+                    
+                    sectionSelect.innerHTML = '<option value="">Select a Section</option>';
+                    
+                    data.forEach(section => {
+                        const option = document.createElement('option');
+                        option.value = section.section;
+                        option.textContent = section.section;
+                        if (currentSection && currentSection === section.section) {
+                            option.selected = true;
+                        }
+                        sectionSelect.appendChild(option);
+                    });
+                    
+                    sectionSelect.disabled = false;
+                })
+                .catch(error => {
+                    sectionSelect.innerHTML = '<option value="">Error loading sections</option>';
+                    console.error('Error loading sections:', error);
+                });
+        } else {
+            sectionSelect.innerHTML = '<option value="">Select a Section</option>';
+            sectionSelect.disabled = true;
+        }
+    }
+
+    function fetchSections(studentClass) {
+        loadSections(studentClass);
+    }
+
+    function resetFilters() {
+        document.getElementById('studentName').value = '';
+        document.getElementById('studentClass').value = '';
+        document.getElementById('studentSection').innerHTML = '<option value="">Select a Section</option>';
+        document.getElementById('studentSection').disabled = true;
+        document.getElementById('monthFilter').value = '';
+        document.getElementById('yearFilter').value = '';
+        window.location.href = window.location.pathname;
+    }
+
+    function printAllBills() {
+        var billsContainer = document.getElementById('bills-container');
+        if (billsContainer) {
+            var printContents = billsContainer.innerHTML;
+            var originalContents = document.body.innerHTML;
+            
+            // Create a print-specific document
+            var printWindow = window.open('', '', 'width=300,height=600');
+
+            printWindow.document.write(printContents);
+            
+            setTimeout(function() {
+                printWindow.print();
+                printWindow.close();
+            }, 200);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectedClass = document.getElementById('studentClass').value;
+        if (selectedClass) {
+            loadSections(selectedClass);
+        }
+        
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    html: "{{ message }}",
+                    icon: "success",
+                    buttonsStyling: false,
+                    confirmButtonText: "Ok, got it!",
+                    customClass: {
+                        confirmButton: "btn btn-primary",
+                    },
+                });
+            {% endfor %}
+        {% endif %}
+    });
+</script>
+{% endblock %}

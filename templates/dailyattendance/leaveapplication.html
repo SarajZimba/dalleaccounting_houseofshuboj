@@ -1,0 +1,399 @@
+{% extends 'base.html' %}
+
+{% block pagetitle %}
+    Leave Applications
+{% endblock %}
+
+{% block home %}
+    <!-- Home content -->
+{% endblock %}
+
+{% block title %}
+    Leave Applications
+{% endblock %}
+
+{% block content %}
+<html>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <body>
+        <style>
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            th, td {
+                padding: 8px;
+                border: 1px solid #ddd;
+                text-align: center; 
+            }
+
+            th {
+                background-color: #f4f4f4; 
+            }
+
+            td {
+                background-color: #fafafa; 
+            }
+
+            tr:nth-child(even) td {
+                background-color: #f9f9f9;
+            }
+
+            tr:hover td {
+                background-color: #e9e9e9; 
+            }
+
+            .approve-button {
+                padding: 6px 12px;
+                color: white;
+                background-color: #28a745;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            .approve-button:hover {
+                opacity: 0.9;
+            }
+
+            .leave-button {
+                padding: 6px 12px;
+                color: white;
+                background-color: red;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .leave-button:hover {
+                opacity: 0.9;
+            }
+
+            #updateModal {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: #fff;
+                padding: 20px;
+                border: 1px solid #ddd;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+        </style>
+        
+        <h1>Pending Application</h1>
+
+        <table id="leaveTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Applied On</th>    
+                    <th>Paid Leaves</th>
+                    <th>Unpaid Leaves</th>
+                    <th>Leave From</th>
+                    <th>Leave Till</th>
+                    <th>No. of Days</th>
+                    <!-- <th>Leave ID</th> -->
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamically filled data -->
+            </tbody>
+        </table>
+        <br>
+
+        <h2>Approved Application</h2>
+        <table id="approvedTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Applied On</th>              
+                    <th>Paid Leaves</th>
+                    <th>Unpaid Leaves</th>
+                    <th>Leave From</th>
+                    <th>Leave Till</th>
+                    <th>No. of Days</th>
+                    <!-- <th>Leave ID</th> -->
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamically populated data -->
+            </tbody>
+        </table>
+
+        <div id="updateModal" style="display: none;">
+            <form id="updateForm">
+                <h2>Update Leave</h2>
+                <label for="updateLeaveID">Leave ID:</label>
+                <input type="text" id="updateLeaveID" name="leaveID" readonly>
+                <br><br>
+                <label for="updateEmpID">Employee ID:</label>
+                <input type="text" id="updateEmpID" name="empID" readonly>
+                <br><br>
+                <label for="updateApplyDate">Apply Date:</label>
+                <input type="date" id="updateApplyDate" name="applyDate" readonly>
+                <br><br>
+                <label for="updateLeaveDateFrom">Leave From:</label>
+                <input type="date" id="updateLeaveDateFrom" name="leave_date_from">
+                <br><br>
+                <label for="updateLeaveDateTo">Leave Till:</label>
+                <input type="date" id="updateLeaveDateTo" name="leave_date_to">
+                <br><br>
+                <label for="updateReason">Reason:</label>
+                <input type="text" id="updateReason" name="reason">
+                <br><br>
+                <label for="updateStatus">Current Status:</label>
+                <select id="updateStatus" name="current_status">
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Cancelled">Cancelled</option>
+
+                </select>
+                <br><br>
+                <button type="button" onclick="submitUpdate()">Update</button>
+                <button type="button" onclick="closeUpdateModal()">Cancel</button>
+            </form>
+        </div>
+
+        <script>
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            const globalUrl = "{{ url }}";
+
+            function fetchLeaveData() {
+                fetch(`${globalUrl}/api/get-leave-apply/`)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        console.log("Fetched leave data:", data);
+                        populateTable(data);
+                        populateApprovedTable(data);
+                    })
+                    .catch((error) => {
+                        console.error("Error fetching leave data:", error);
+                    });
+            }
+
+            function populateTable(data) {
+                const tableBody = document.querySelector("#leaveTable tbody");
+                tableBody.innerHTML = "";
+
+                data.pending_leave.forEach((item) => {
+                    const row = document.createElement("tr");
+
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.employee_name;
+
+                    const appliedOnCell = document.createElement("td");
+                    appliedOnCell.textContent = new Date(item.created_at).toLocaleDateString();
+
+                    const paidLeavesCell = document.createElement("td");
+                    paidLeavesCell.textContent = Number(item.noOfPaidLeaves).toFixed(0);
+
+                    const unpaidLeavesCell = document.createElement("td");
+                    unpaidLeavesCell.textContent = Number(item.noOfUnPaidLeaves).toFixed(0);
+
+                    const leaveFromCell = document.createElement("td");
+                    leaveFromCell.textContent = `${item.leaveDateFrom}`;
+
+                    const leaveToCell = document.createElement("td");
+                    leaveToCell.textContent = `${item.leaveDateTo}`;
+
+                    const noOfDaysCell = document.createElement("td");
+                    noOfDaysCell.textContent = Number(item.noOfDays).toFixed(0);
+
+                    const idCell = document.createElement("td");
+                    idCell.textContent = item.id;
+
+                    const reasonCell = document.createElement("td");
+                    reasonCell.textContent = item.reason;
+
+                    const actionCell = document.createElement("td");
+                    
+                    // Approve button
+                    const approveButton = document.createElement("button");
+                    approveButton.className = "approve-button";
+                    approveButton.textContent = "Approve";
+                    approveButton.addEventListener("click", () => approveLeaveRequest(item.id));
+
+                    // Update button
+                    const updateButton = document.createElement("button");
+                    updateButton.className = "approve-button";
+                    updateButton.textContent = "Update";
+                    updateButton.style.marginLeft = "10px";
+                    updateButton.addEventListener("click", () => showUpdateForm(item));
+
+                    // Cancel button
+                    const cancelButton = document.createElement("button");
+                    cancelButton.className = "leave-button";
+                    cancelButton.textContent = "Cancel";
+                    cancelButton.style.marginLeft = "10px";
+                    cancelButton.addEventListener("click", () => cancelLeaveRequest(item.empID, item.id));
+
+                    actionCell.appendChild(approveButton);
+                    actionCell.appendChild(updateButton);
+                    actionCell.appendChild(cancelButton);
+
+                    row.appendChild(nameCell);
+                    row.appendChild(appliedOnCell);
+                    row.appendChild(paidLeavesCell);
+                    row.appendChild(unpaidLeavesCell);
+                    row.appendChild(leaveFromCell);
+                    row.appendChild(leaveToCell);
+                    row.appendChild(noOfDaysCell);
+                    // row.appendChild(idCell);
+                    row.appendChild(reasonCell);
+                    row.appendChild(actionCell);
+
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function cancelLeaveRequest(empID, leaveID) {
+                const payload = { empID, id: leaveID };
+                fetch(`${globalUrl}/api/cancel-tbleaveapply/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json",'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(payload),
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            alert("Leave cancelled successfully.");
+                            fetchLeaveData();
+                        } else {
+                            alert("Error cancelling leave.");
+                        }
+                    })
+                    .catch((error) => console.error("Error cancelling leave:", error));
+            }
+
+            window.onload = fetchLeaveData;
+
+            function populateApprovedTable(data) {
+                const tableBody = document.querySelector("#approvedTable tbody");
+                tableBody.innerHTML = "";
+
+                data.approved_leave.forEach((item) => {
+                    const row = document.createElement("tr");
+
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.employee_name;
+
+                    const appliedOnCell = document.createElement("td");
+                    appliedOnCell.textContent = new Date(item.created_at).toLocaleDateString();
+
+                    const paidLeavesCell = document.createElement("td");
+                    paidLeavesCell.textContent = Number(item.noOfPaidLeaves).toFixed(0);
+
+                    const unpaidLeavesCell = document.createElement("td");
+                    unpaidLeavesCell.textContent = Number(item.noOfUnPaidLeaves).toFixed(0);
+
+                    const leaveFromCell = document.createElement("td");
+                    leaveFromCell.textContent = `${item.leaveDateFrom}`;
+
+                    const leaveToCell = document.createElement("td");
+                    leaveToCell.textContent = `${item.leaveDateTo}`;
+
+                    const noOfDaysCell = document.createElement("td");
+                    noOfDaysCell.textContent = Number(item.noOfDays).toFixed(0);
+
+                    // const idCell = document.createElement("td");
+                    // idCell.textContent = item.id;
+
+                    const reasonCell = document.createElement("td");
+                    reasonCell.textContent = item.reason;
+
+                    const actionCell = document.createElement("td");
+                    const updateButton = document.createElement("button");
+                    updateButton.className = "approve-button";
+                    updateButton.textContent = "Update";
+                    updateButton.addEventListener("click", () => showUpdateForm(item));
+
+                    actionCell.appendChild(updateButton);
+
+                    row.appendChild(nameCell);
+                    row.appendChild(appliedOnCell);
+                    row.appendChild(paidLeavesCell);
+                    row.appendChild(unpaidLeavesCell);
+                    row.appendChild(leaveFromCell);
+                    row.appendChild(leaveToCell);
+                    row.appendChild(noOfDaysCell);
+                    // row.appendChild(idCell);
+                    row.appendChild(reasonCell);
+                    row.appendChild(actionCell);
+
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function approveLeaveRequest(id) {
+                fetch(`${globalUrl}/api/confirm-leave-apply/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json','X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ id }),
+                })
+                .then((response) => {
+                    if (response.ok) {
+                        alert("Leave approved!");
+                        fetchLeaveData();
+                    } else {
+                        alert("Error approving leave.");
+                    }
+                })
+                .catch((error) => console.error("Error approving leave:", error));
+            }
+
+            function showUpdateForm(item) {
+                document.getElementById("updateLeaveID").value = item.id;
+                document.getElementById("updateEmpID").value = item.empID;
+                document.getElementById("updateApplyDate").value = item.applyDate || new Date().toISOString().split("T")[0];
+                document.getElementById("updateLeaveDateFrom").value = item.leaveDateFrom;
+                document.getElementById("updateLeaveDateTo").value = item.leaveDateTo;
+                document.getElementById("updateReason").value = item.reason;
+                document.getElementById("updateStatus").value = item.current_status;
+
+                document.getElementById("updateModal").style.display = "block";
+            }
+
+            function closeUpdateModal() {
+                document.getElementById("updateModal").style.display = "none";
+            }
+
+            function submitUpdate() {
+                const updateForm = document.getElementById("updateForm");
+                const payload = {
+                    id:updateForm.leaveID.value,
+                    empID: updateForm.empID.value,
+                    applyDate: updateForm.applyDate.value,
+                    leave_date_from: updateForm.leave_date_from.value,
+                    leave_date_to: updateForm.leave_date_to.value,
+                    reason: updateForm.reason.value,
+                    current_status: updateForm.current_status.value,
+                };
+
+                fetch(`${globalUrl}/api/update-tbleaveapply/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json",'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(payload),
+                })
+                .then((response) => {
+                    if (response.ok) {
+                        alert("Leave updated successfully.");
+                        closeUpdateModal();
+                        fetchLeaveData();
+                    } else {
+                        alert("Error updating leave.");
+                    }
+                })
+                .catch((error) => console.error("Error updating leave:", error));
+            }
+
+            window.onload = fetchLeaveData;
+        </script>
+    </body>
+</html>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Commission Create{% endblock %}
+{% block title %}Commission Create{% endblock %}
+{% block content %}
+<html>
+
+<head>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+
+<body>
+<!-- Form for adding commission -->
+<div class="container mt-4">
+    <h3>Add Employee Commission</h3>
+    <form id="commissionForm">
+        <div class="row">
+            <!-- Month Selection -->
+            <div class="col-md-4">
+                <label for="month">Select Nepali Month:</label>
+                <select id="month" class="form-control" required>
+                    <option value="" disabled selected>Choose Month</option>
+                    <option value="Baishakh">Baishakh</option>
+                    <option value="Jestha">Jestha</option>
+                    <option value="Asar">Asar</option>
+                    <option value="Shrawan">Shrawan</option>
+                    <option value="Bhadau">Bhadau</option>
+                    <option value="Aswin">Aswin</option>
+                    <option value="Kartik">Kartik</option>
+                    <option value="Mangsir">Mangsir</option>
+                    <option value="Poush">Poush</option>
+                    <option value="Magh">Magh</option>
+                    <option value="Falgun">Falgun</option>
+                    <option value="Chaitra">Chaitra</option>
+                </select>
+            </div>
+
+            <!-- Amount Input -->
+            <div class="col-md-4">
+                <label for="amount">Enter Amount:</label>
+                <input type="number" id="amount" class="form-control" required>
+            </div>
+
+            <!-- Commission Name (Type) -->
+            <div class="col-md-4">
+                <label for="commision_name">Enter Commission Name:</label>
+                <input type="text" id="commision_name" class="form-control" required>
+            </div>
+
+            <!-- Add Button -->
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="button" id="addCommission" class="btn btn-success">+</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Table to Show Added Commissions -->
+    <h4 class="mt-4">Added Commissions</h4>
+    <table class="table table-bordered mt-2">
+        <thead>
+            <tr>
+                <th>Employee ID</th>
+                <th>Month</th>
+                <th>Amount</th>
+                <th>Commission Name</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="commissionTableBody">
+            <!-- Entries will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <!-- Hidden Input to Store Data -->
+    <input type="hidden" id="commissionList" name="commissionList">
+
+    <!-- Submit Button -->
+    <button type="button" id="submitCommissions" class="btn btn-primary">Submit</button>
+</div>
+
+<script>
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let commissions = []; // Store commissions in a list
+
+        // Get Employee ID from localStorage
+        const selectedEmpID = localStorage.getItem("selectedEmpID");
+        
+        if (!selectedEmpID) {
+            alert("No employee selected!");
+            return;
+        }
+
+        // Function to add commission to the table
+        document.getElementById("addCommission").addEventListener("click", function () {
+            const month = document.getElementById("month").value;
+            const amount = document.getElementById("amount").value;
+            const commision_name = document.getElementById("commision_name").value;
+
+            if (!month || !amount || !commision_name) {
+                alert("Please select a month, enter an amount, and provide a commission name!");
+                return;
+            }
+
+            // Create a commission object
+            const commission = { empID: selectedEmpID, month, amount, type: commision_name };
+
+            // Add to list
+            commissions.push(commission);
+
+            // Update hidden input
+            document.getElementById("commissionList").value = JSON.stringify(commissions);
+
+            // Add to table
+            const tableBody = document.getElementById("commissionTableBody");
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${selectedEmpID}</td>
+                <td>${month}</td>
+                <td>${amount}</td>
+                <td>${commision_name}</td>
+                <td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>
+            `;
+
+            // Attach event to remove row
+            row.querySelector(".remove-row").addEventListener("click", function () {
+                const index = Array.from(tableBody.children).indexOf(row);
+                commissions.splice(index, 1);
+                tableBody.removeChild(row);
+                document.getElementById("commissionList").value = JSON.stringify(commissions);
+            });
+
+            // Clear form fields
+            document.getElementById("month").value = "";
+            document.getElementById("amount").value = "";
+            document.getElementById("commision_name").value = "";
+        });
+
+        // Submit data to API
+        document.getElementById("submitCommissions").addEventListener("click", function () {
+            if (commissions.length === 0) {
+                alert("Please add at least one commission before submitting.");
+                return;
+            }
+
+            fetch("{% url 'create-employee-commision' %}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json",'X-CSRFToken': csrfToken  },
+                body: JSON.stringify(commissions),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.detail);
+                if (data.detail.includes("successfully")) {
+                    commissions = [];
+                    document.getElementById("commissionTableBody").innerHTML = "";
+                    document.getElementById("commissionList").value = "";
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        });
+    });
+</script>
+
+</body>
+</html>
+{% endblock %}

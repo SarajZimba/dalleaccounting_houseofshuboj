@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block pagetitle %}
+    Daily Attendance
+{% endblock %}
+
+{% block home %}
+{% endblock %}
+
+{% block title %}
+Daily Attendance
+{% endblock %}
+
+{% block content %}
+<html>
+    <body>
+    <style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        text-align: center; 
+    }
+
+    th {
+        background-color: #f4f4f4; 
+    }
+
+    td {
+        background-color: #fafafa; 
+    }
+
+    tr:nth-child(even) td {
+        background-color: #f9f9f9;
+    }
+
+    tr:hover td {
+        background-color: #e9e9e9; 
+    }
+
+    .toggle-button {
+        padding: 5px 15px;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .toggle-button:hover {
+        opacity: 0.9;
+    }
+    .leave-button {
+        margin: 10px 0;
+        float: left;
+        padding: 8px 16px;
+        background-color: red;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .leave-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+    }
+
+    .leave-stats div {
+            font-size: 16px;
+            font-weight: bold;
+            margin-left: 10px;
+    }
+    </style>
+    
+    <h1>Daily Attendance</h1>
+    <a href="{% url 'leaveapplication' %}">
+        <button class="leave-button">Leave Application</button>
+    </a>
+    <!-- Display the leave stats -->
+    <div id="leaveStats" class="leave-stats">
+        <div style="color: LightSkyBlue;">On Leave: <span id="onLeaveCount">0</span></div>
+        <div style="color: Plum;">Late Arrivals: <span id="lateArrivalsCount">0</span></div>
+        <div style="color: LightCoral;">No Show: <span id="noShowCount">0</span></div>
+        <div>Approved Leaves: <span id="approvedLeavesCount">0</span></div>
+        <div>Pending Leaves: <span id="pendingLeavesCount">0</span></div>
+    </div>
+
+    <table id="attendanceTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Clock-in Time <br>(<span style="color: red;" id="arrivaltime"></span>)</th>
+                <th>Clock-out Time <br>(<span style="color: red;" id="clockouttime"></span>)</th>
+                <th>Level</th>
+                <th>Shift</th>
+                <th>Attendance Required</th>
+                <!-- <th>Late Attendance Alert</th> -->
+                <th>Action</th> 
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Table rows will be populated dynamically with JavaScript -->
+        </tbody>
+    </table>
+
+    <script>
+        const globalUrl = "{{ url }}"; 
+
+        function fetchAttendanceData() {
+            const apiUrl = `${globalUrl}{% url 'all-daily-attendance' %}`; 
+            console.log("Fetching data from:", apiUrl);
+
+            fetch(apiUrl)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok " + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    console.log("Fetched data:", data);
+                    populateLeaveStats(data); 
+                    populateTable(data.employee_list); 
+                })
+                .catch((error) => {
+                    console.error("Error fetching data:", error);
+                });
+        }
+
+        function populateLeaveStats(data) {
+            document.getElementById("onLeaveCount").innerText = data.on_leave;
+            document.getElementById("approvedLeavesCount").innerText = data.approved_leaves;
+            document.getElementById("pendingLeavesCount").innerText = data.pending_leaves;
+            document.getElementById("lateArrivalsCount").innerText = data.no_of_late_arrival;
+            document.getElementById("noShowCount").innerText = data.no_show;
+            document.getElementById("arrivaltime").innerText = data.arrival_time;
+            document.getElementById("clockouttime").innerText = data.clock_out_time;  
+
+        }
+
+        function populateTable(data) {
+    const tableBody = document.querySelector("#attendanceTable tbody");
+    tableBody.innerHTML = "";
+
+    if (data.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 8; 
+        cell.textContent = "No attendance data available.";
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    data.forEach((item) => {
+    const row = document.createElement("tr");
+
+    if (item["leave"]) {
+        row.style.backgroundColor = "LightSkyBlue";
+    } else if (item["lateattendance_alert"]) {
+        row.style.backgroundColor = "Plum";
+    } else if (item["no_show"]) {
+        row.style.backgroundColor = "LightCoral";
+    } else {
+        row.style.backgroundColor = "LightGreen";
+    }
+    console.log('Row color assigned:', row.style.backgroundColor);
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = item["employee_name"];
+    // nameCell.style.color = row.style.backgroundColor;
+    nameCell.style.backgroundColor= row.style.backgroundColor;
+
+    const checkInTimeCell = document.createElement("td");
+    checkInTimeCell.textContent = item["check-in-time"] || "No"; 
+    // nameCell.style.color = row.style.backgroundColor;
+    checkInTimeCell.style.backgroundColor= row.style.backgroundColor;
+
+    const checkOutTimeCell = document.createElement("td");
+    checkOutTimeCell.textContent = item["check-out-time"] || "No"; 
+    // nameCell.style.color = row.style.backgroundColor;
+    checkOutTimeCell.style.backgroundColor= row.style.backgroundColor;
+
+    const levelCell = document.createElement("td");
+    levelCell.textContent = item["level"] || "N/A";
+    // nameCell.style.color = row.style.backgroundColor;
+    levelCell.style.backgroundColor= row.style.backgroundColor;
+
+    const shiftCell = document.createElement("td");
+    shiftCell.textContent = item["shift"] || "N/A";
+    // nameCell.style.color = row.style.backgroundColor;
+    shiftCell.style.backgroundColor= row.style.backgroundColor;
+
+    const attendanceReqCell = document.createElement("td");
+    attendanceReqCell.textContent = item["attendance_required"] ? "Yes" : "No";
+    // nameCell.style.color = row.style.backgroundColor;
+    attendanceReqCell.style.backgroundColor= row.style.backgroundColor;
+
+    // const lateAttendanceCell = document.createElement("td");
+    // lateAttendanceCell.textContent = item["lateattendance_alert"] ? "Yes" : "No";
+    // // nameCell.style.color = row.style.backgroundColor;
+    // lateAttendanceCell.style.backgroundColor= row.style.backgroundColor;
+
+    const actionCell = document.createElement("td");
+    const actionButton = document.createElement("button");
+    actionButton.className = "toggle-button";
+
+    if (item["leave"]) {
+        actionButton.textContent = "On Leave";
+        actionButton.style.backgroundColor = "LightSkyBlue";
+        actionButton.disabled = true;
+    } else {
+        actionButton.dataset.empID = item["employee_id"];
+        actionButton.dataset.status = item["check-in-time"] ? "check-out" : "check-in";
+
+        if (item["check-in-time"]) {
+            actionButton.textContent = "Clock-Out";
+            actionButton.style.backgroundColor = "red";
+        } else {
+            actionButton.textContent = "Clock-In";
+            actionButton.style.backgroundColor = "green";
+        }
+
+        if (item["check-out-time"]) {
+            const checkoutText = document.createElement("span");
+            checkoutText.style.color = "red";
+            checkoutText.style.fontWeight = "bold";
+            checkoutText.textContent = "Checked-Out";
+            actionCell.appendChild(checkoutText);
+            actionButton.style.display = 'none';
+        }
+
+        actionButton.addEventListener('click', () => {
+            const empID = actionButton.dataset.empID;
+            const status = actionButton.dataset.status;
+            toggleCheckInOut(empID, status, actionButton);
+        });
+    }
+
+    actionCell.appendChild(actionButton);
+    row.appendChild(nameCell);
+    row.appendChild(checkInTimeCell);
+    row.appendChild(checkOutTimeCell);
+    row.appendChild(levelCell);
+    row.appendChild(shiftCell);
+    row.appendChild(attendanceReqCell);
+    // row.appendChild(lateAttendanceCell);
+    row.appendChild(actionCell);
+
+    tableBody.appendChild(row);
+});
+
+
+}
+
+
+        function toggleCheckInOut(empID, currentStatus, button) {
+            const newStatus = currentStatus === "check-in" ? "check-out" : "check-in";
+            const apiUrl = `${globalUrl}{% url 'daily-attendance-create' %}`;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    empID: empID,
+                    status: newStatus,
+                }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Error updating attendance');
+                }
+                return response.json();
+            })
+            .then(() => {
+                button.textContent = newStatus === "check-in" ? "Clock-Out" : "Clock-In";
+                button.dataset.status = newStatus;
+
+                if (newStatus === "check-in") {
+                    button.style.backgroundColor = "green";
+                } else {
+                    button.style.backgroundColor = "red";
+                    button.style.display = 'none';
+                }
+
+                fetchAttendanceData(); // Fetch new data after updating attendance
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Failed to update attendance.');
+            });
+        }
+
+        window.onload = fetchAttendanceData;
+    </script>
+
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    </body>
+</html>
+
+{% endblock %}

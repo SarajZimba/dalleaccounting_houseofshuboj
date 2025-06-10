@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block pagetitle %}Student Canteen Attendance List{% endblock %}
+{% block home %} {% url 'studentcanteenattendance_list' %} {% endblock %}
+{% block title %}Student Canteen Attendance List{% endblock %}
+
+{% block content %}
+<head>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+</head>
+<body>
+    <div><a href="{% url 'generate_login_token_and_redirect' %}">Go to Attendance App</a></div>
+
+    <h1 class="my-4">Student Canteen Attendance List</h1>
+
+    <!-- Search Input for student name -->
+    <div class="mb-3">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search for student name...">
+    </div>
+
+    <!-- Dropdown for selecting student class -->
+    <div class="mb-3">
+        <form method="get" action="">
+            <select name="student_class" id="studentClass" class="form-control" onchange="this.form.submit()">
+                <option value="">Select a Class</option>
+                {% for class_item in distinct_classes %}
+                    <option value="{{ class_item.student__student_class }}" {% if request.GET.student_class == class_item.student__student_class %} selected {% endif %}>
+                        {{ class_item.student__student_class }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Check if there are any students for the selected class -->
+    <!--{% if request.GET.student_class %}-->
+    <!--        <div class="mb-3">-->
+    <!--            <button id="createBillsBtn" class="btn btn-success">Create Bills for Class {{ request.GET.student_class }}</button>-->
+    <!--        </div>-->
+    <!--{% endif %}-->
+
+    {% if request.GET.student_class %}
+    <div class="mb-3">
+        <button id="createBillsByMonthBtn" class="btn btn-info">Create Bills for Class {{ request.GET.student_class }} by Month</button>
+    </div>
+    {% endif %}
+
+    <!-- Bootstrap Table -->
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover" id="attendanceTable">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Student Name</th>
+                    <th>Class</th>
+                    <th>Section</th>
+                    <th>Roll No</th>
+                    <th>Meals Eaten</th>
+                    <th>Total</th>
+                    <th>Checkout</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in meal_eatens_by_students %}
+                <tr>
+                    <td class="student-name">{{ entry.student__name }}</td>
+                    <td class="student-class">{{ entry.student__student_class }}</td>
+                    <td class="student-section">{{ entry.student__section }}</td>
+                    <td class="student-rollno">{{ entry.student__roll_no }}</td>
+                    <td>{{ entry.no_of_entries }}</td>
+                    <td>{{ entry.total_sum }}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm checkout-btn" data-student-id="{{ entry.student }}"
+                                data-quantity="{{ entry.no_of_entries }}" data-student-name="{{ entry.student__name }}">Checkout</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center">No students found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+
+<!-- JavaScript for Filtering -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let searchInput = document.getElementById("searchInput");
+        let tableRows = document.querySelectorAll("#attendanceTable tbody tr");
+
+        // Search functionality
+        searchInput.addEventListener("keyup", function () {
+            let filter = searchInput.value.toLowerCase();
+            tableRows.forEach(row => {
+                let studentName = row.querySelector(".student-name").textContent.toLowerCase();
+                if (studentName.includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
+
+        // Checkout functionality with confirmation
+        document.querySelectorAll('.checkout-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                let studentId = button.getAttribute('data-student-id');
+                let quantity = button.getAttribute('data-quantity');
+                let studentName = button.getAttribute('data-student-name');
+
+                // Show confirmation dialog first
+                Swal.fire({
+                    title: 'Confirm Checkout',
+                    text: `Are you sure you want to checkout ${studentName} for ${quantity} meal(s)?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, checkout',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // User confirmed, proceed with checkout
+                        let checkoutUrl = "{% url 'checkout-bill-canteen' %}";
+                        let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                        Swal.fire({
+                            title: 'Processing',
+                            text: 'Creating bill for ' + studentName + '...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch(checkoutUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({
+                                student_id: studentId,
+                                student_attendance: quantity
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            Swal.close();
+                            let bill_id = data.bill_id
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success!',
+                                    text: 'Checkout successful for ' + studentName,
+                                    confirmButtonText: 'OK'
+                                }).then(() => {
+                                    button.disabled = true;
+                                    button.textContent = 'Checked Out';
+                                    button.classList.remove('btn-primary');
+                                    button.classList.add('btn-success');
+                                    // Redirect to the bill detail page
+                                    window.location.href = `/single-bill-detail/${bill_id}`;
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Failed',
+                                    text: 'Checkout failed: ' + (data.message || 'Unknown error'),
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.close();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An error occurred during checkout',
+                                confirmButtonText: 'OK'
+                            });
+                        });
+                    }
+                });
+            });
+        });
+
+        // Create Bills functionality for selected class with confirmation
+        document.getElementById('createBillsBtn')?.addEventListener('click', function () {
+            let selectedClass = '{{ request.GET.student_class }}';
+            
+            if (!selectedClass) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No Class Selected',
+                    text: 'Please select a class before creating bills.',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            // Show confirmation dialog first
+            Swal.fire({
+                title: 'Confirm Create Bills',
+                text: `Are you sure you want to create bills for all students in class ${selectedClass}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, create bills',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    Swal.fire({
+                        title: 'Processing',
+                        text: 'Creating bills for class ' + selectedClass + '...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    fetch("{% url 'checkout-classbills' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            class: selectedClass
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        Swal.close();
+                        if (data.data) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: data.data,
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                window.location.href = `/print-multiple-bill/${encodeURIComponent(selectedClass)}`;
+                            });
+                        }
+                        else if (data.error) {
+                                        // Error case - no working days or other error
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Cannot Create Bills',
+                                            text: data.error,
+                                            confirmButtonText: 'OK'
+                                        });
+                                    }
+                         else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: 'Failed to create bills.',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred while creating bills.',
+                            confirmButtonText: 'OK'
+                        });
+                    });
+                }
+            });
+        });
+    });
+
+    // Add this to your existing JavaScript
+    document.getElementById('createBillsByMonthBtn')?.addEventListener('click', function () {
+        let selectedClass = '{{ request.GET.student_class }}';
+        
+        if (!selectedClass) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No Class Selected',
+                text: 'Please select a class before creating bills.',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+
+        // Get current month and year for default values
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1; // Months are 0-indexed in JS
+        
+        // Show month selection dialog
+        Swal.fire({
+            title: 'Select Month',
+            html: `
+                <div class="form-group">
+                    <label for="monthSelect">Month:</label>
+                    <select id="monthSelect" class="form-control">
+                        <option value="1" ${currentMonth === 1 ? 'selected' : ''}>January</option>
+                        <option value="2" ${currentMonth === 2 ? 'selected' : ''}>February</option>
+                        <option value="3" ${currentMonth === 3 ? 'selected' : ''}>March</option>
+                        <option value="4" ${currentMonth === 4 ? 'selected' : ''}>April</option>
+                        <option value="5" ${currentMonth === 5 ? 'selected' : ''}>May</option>
+                        <option value="6" ${currentMonth === 6 ? 'selected' : ''}>June</option>
+                        <option value="7" ${currentMonth === 7 ? 'selected' : ''}>July</option>
+                        <option value="8" ${currentMonth === 8 ? 'selected' : ''}>August</option>
+                        <option value="9" ${currentMonth === 9 ? 'selected' : ''}>September</option>
+                        <option value="10" ${currentMonth === 10 ? 'selected' : ''}>October</option>
+                        <option value="11" ${currentMonth === 11 ? 'selected' : ''}>November</option>
+                        <option value="12" ${currentMonth === 12 ? 'selected' : ''}>December</option>
+                    </select>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="yearSelect">Year:</label>
+                    <input type="number" id="yearSelect" class="form-control" value="${currentYear}" min="2000" max="2100">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Create Bills',
+            cancelButtonText: 'Cancel',
+            focusConfirm: false,
+            preConfirm: () => {
+                return {
+                    month: document.getElementById('monthSelect').value,
+                    year: document.getElementById('yearSelect').value
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const month = result.value.month;
+                const year = result.value.year;
+                
+                // Show confirmation dialog
+                Swal.fire({
+                    title: 'Confirm Create Bills',
+                    text: `Are you sure you want to create bills for class ${selectedClass} for ${getMonthName(month)} ${year}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, create bills',
+                    cancelButtonText: 'Cancel'
+                }).then((confirmationResult) => {
+                    if (confirmationResult.isConfirmed) {
+                        let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                        Swal.fire({
+                            title: 'Processing',
+                            text: `Creating bills for class ${selectedClass} (${getMonthName(month)} ${year})...`,
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch("{% url 'checkout-classbills-by-month' %}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({
+                                class: selectedClass,
+                                month: month,
+                                year: year
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            Swal.close();
+                            if (data.data) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success!',
+                                    text: data.data,
+                                    confirmButtonText: 'OK'
+                                }).then(() => {
+                                    // window.location.href = `/print-multiple-bill/${encodeURIComponent(selectedClass)}`;
+                                    window.location.href = `/print-multiple-bill/${encodeURIComponent(selectedClass)}?month=${month}&year=${year}`;
+                                });
+                            } else if (data.error) {
+                                        // Error case - no working days or other error
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Cannot Create Bills',
+                                            text: data.error,
+                                            confirmButtonText: 'OK'
+                                        });
+                                    }
+                             else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Failed',
+                                    text: 'Failed to create bills.',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.close();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An error occurred while creating bills.',
+                                confirmButtonText: 'OK'
+                            });
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Helper function to get month name
+    function getMonthName(monthNumber) {
+        const months = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return months[parseInt(monthNumber) - 1];
+    }
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,528 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Salary Sheet{% endblock %}
+{% block home %} {% endblock %}
+{% block title %}Salary Sheet{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Salary Sheet</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #000;
+            text-align: center;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        td {
+            text-align: right;
+        }
+        .export-button {
+            margin: 10px 0;
+            float: left;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            
+        }
+        .save-button {
+            margin: 10px 0;
+            float: right;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .export-button:hover {
+            background-color: #0056b3;
+        }
+        .save-button:hover {
+            background-color: #0056b3;
+        }
+        .dropdown {
+            margin: 10px 10px 10px 0;
+            float: right;
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-left: 2px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 40%;
+            border-radius: 10px;
+        }
+        .close {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="salary-sheet-heading"></h1>
+    <p id="nepali-date"></p>
+    <select id="nepali-month-dropdown" class="dropdown" onchange="handleMonthChange(this.value)">
+        <option value="" disabled selected>Select Month</option>
+        <option value="Baisakh">Baisakh</option>
+        <option value="Jestha">Jestha</option>
+        <option value="Ashad">Ashad</option>
+        <option value="Shrawan">Shrawan</option>
+        <option value="Bhadra">Bhadra</option>
+        <option value="Ashwin">Ashwin</option>
+        <option value="Kartik">Kartik</option>
+        <option value="Mangsir">Mangsir</option>
+        <option value="Poush">Poush</option>
+        <option value="Magh">Magh</option>
+        <option value="Falgun">Falgun</option>
+        <option value="Chaitra">Chaitra</option>
+    </select>
+
+        <!-- Modal Popup -->
+    <div id="ledgerPopup" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLedgerPopup()">&times;</span>
+            <h2>Select Ledger and Subledger</h2>
+
+            <label for="ledgerSelect">Ledger:</label>
+            <select id="ledgerSelect" onchange="populateSubledgers()">
+                <option value="">Select a ledger</option>
+            </select>
+
+            <label for="subledgerSelect">Subledger:</label>
+            <select id="subledgerSelect">
+                <option value="">Select a subledger</option>
+            </select>
+
+            <button onclick="saveSelection()">Confirm</button>
+        </div>
+    </div>
+
+    <button class="save-button" onclick="openLedgerPopup()">Save</button>
+        <!-- <button class="save-button" onclick="SaveSalarySheet()">Save</button> -->
+    <button class="export-button" onclick="exportTableToExcel('salary-table', 'Salary_Sheet')">Export to Excel</button>
+    <table id="salary-table">
+        <thead>
+            <tr id="header-row-1">
+                <th rowspan="2">S/N</th>
+                <th rowspan="2">Name of Employee</th>
+                <th colspan="" id="gross-salary-header">TOTAL GROSS SALARY</th>
+                <th rowspan="2">Unpaid Leave Deduction</th>
+                <th rowspan="2">Unpaid Leaves</th>
+                <th rowspan="2">Total Salary</th>
+                <th colspan="" id="fund-deductions-header">FUND DEDUCTIONS</th>
+                <th colspan="3" id="tax-deductions-header">TAX DEDUCTIONS</th>
+                <th rowspan="2">Net Payable</th>
+            </tr>
+            <tr id="header-row-2"></tr>
+        </thead>
+        <tbody id="salary-table-body"></tbody>
+        <tfoot>
+            <tr>
+                <td id="total-label-cell" colspan="7" style="text-align:center; font-weight:bold;">Total</td>
+                <td id="total-salary-cell" style="text-align:center; font-weight:bold;"></td>
+                <td colspan="3" id="total-leave-deductions-cell" style="text-align:center; font-weight:bold;"></td>
+                <td id="total-tax-cell" style="text-align:center; font-weight:bold;"></td>
+                <td id="total-net-payable-cell" style="text-align:center; font-weight:bold;"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script>
+        const globalUrl = "{{ url }}";
+
+        function exportTableToExcel(tableId, filename = '') {
+    const downloadLink = document.createElement('a');
+    const dataType = 'application/vnd.ms-excel';
+
+    // Fetch the table content and additional heading info
+    const table = document.getElementById(tableId).outerHTML;
+    const heading = document.getElementById('salary-sheet-heading').outerHTML;
+    const nepaliDate = document.getElementById('nepali-date').innerText; // Use innerText to extract only the text
+
+    // Apply inline CSS for borders to all <table>, <tr>, <td>, and <th> elements
+    const exportHTML = `
+        <html>
+        <head>
+            <style>
+                table, th, td {
+                    border: 1px solid black;
+                    border-collapse: collapse;
+                    text-align: center;
+                    padding: 5px;
+                }
+                th {
+                    background-color: #f2f2f2;
+                }
+            </style>
+        </head>
+        <body>
+            <table style="border-collapse: collapse; width: 100%;">
+                <tr>
+                    <td colspan="13" style="font-weight: bold; font-size: 16px; text-align: center;">
+                        ${heading.replace('<h1', '<b').replace('</h1>', '</b>')}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="13" style="text-align: center;">
+                        ${nepaliDate}
+                    </td>
+                </tr>
+                ${table.replace(/<table/g, '<table style="border: 1px solid black; width: 100%; border-collapse: collapse;"')
+                       .replace(/<th/g, '<th style="border: 1px solid black; padding: 5px; text-align: center;"')
+                       .replace(/<td/g, '<td style="border: 1px solid black; padding: 5px; text-align: center;"')}
+            </table>
+        </body>
+        </html>
+    `;
+
+    filename = filename ? filename + '.xls' : 'excel_data.xls';
+
+    // Create the download link and initiate the download
+    downloadLink.href = `data:${dataType}, ${encodeURIComponent(exportHTML)}`;
+    downloadLink.download = filename;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+
+        async function fetchSalaryData() {
+            const apiUrl = `${globalUrl}/api/salarysheet/`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                const data = await response.json();
+                generateTable(data);
+                displayHeaderInfo(data);
+            } catch (error) {
+                console.error("Error fetching salary data:", error);
+            }
+        }
+
+        function displayHeaderInfo(data) {
+            document.getElementById("salary-sheet-heading").textContent = `Salary Sheet for ${data.month},${data.fiscal_year}`;
+            document.getElementById("nepali-date").textContent = `Date: ${data.nepali_date}`;
+        }
+        
+        async function SaveSalarySheet(ledgerID, subledgerID) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    const apiUrl = `${globalUrl}/api/salarysheet/`;
+    try {
+        // Fetch the salary sheet data from the API
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const salarySheetData = await response.json();
+
+        // Prepare the data to send in the POST request
+        const payload = {
+            response_list: salarySheetData.response_list.map(employee => ({
+                name: employee.name,
+                total_gross_salary: {
+                    paypackages: employee.total_gross_salary.paypackages,
+                    total_salary: employee.total_gross_salary.total_salary
+                },
+                leave_deductions: employee.leave_deductions,
+                empID: employee.empID,
+                net_amount: employee.net_amount,
+                fund_deductions: employee.fund_deductions,
+                tax_deduction: employee.tax_deduction
+            })),
+            month: salarySheetData.month,
+            nepali_date: salarySheetData.nepali_date,
+            totals: salarySheetData.totals, 
+            ledger_id: ledgerID,
+            subledger_id:subledgerID
+        };
+
+        // Log the payload to ensure all data is correctly prepared
+        console.log("Payload to send:", JSON.stringify(payload, null, 2));
+
+        // Make the POST request to save the salary sheet
+        const saveResponse = await fetch("{% url 'save_salary_sheet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken  // Include CSRF token
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const responseBody = await saveResponse.json(); // Parse response for debugging
+        console.log("API Response:", responseBody);
+
+        // Handle response from the POST request
+        if (saveResponse.ok) {
+            alert("Salary Sheet saved successfully!");
+        } else {
+            console.error("Failed to save salary sheet:", responseBody);
+            alert(`Failed to save Salary Sheet: ${responseBody.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error("Error saving salary data:", error);
+        alert("Error saving Salary Sheet.");
+    }
+}
+
+
+    function generateTable(data) {
+    const headerRow1 = document.getElementById("header-row-1");
+    const headerRow2 = document.getElementById("header-row-2");
+    const tableBody = document.getElementById("salary-table-body");
+
+    const allPackages = data.response_list.flatMap(employee => employee.total_gross_salary.paypackages.map(pkg => pkg.package_name));
+    const uniquePackages = [...new Set(allPackages)];
+
+    const allFundDeductions = data.response_list.flatMap(employee => employee.fund_deductions.map(deduction => deduction.name));
+    const uniqueFundDeductions = [...new Set(allFundDeductions)];
+
+    const taxHeaders = ['SST', 'Income Tax', 'Total Tax'];
+
+    headerRow1.querySelector("#gross-salary-header").setAttribute("colspan", uniquePackages.length);
+    headerRow1.querySelector("#fund-deductions-header").setAttribute("colspan", uniqueFundDeductions.length);
+    headerRow1.querySelector("#tax-deductions-header").setAttribute("colspan", taxHeaders.length);
+
+    uniquePackages.forEach(pkgName => {
+        const th = document.createElement("th");
+        th.textContent = pkgName;
+        headerRow2.appendChild(th);
+    });
+
+    uniqueFundDeductions.forEach(deductionName => {
+        const th = document.createElement("th");
+        th.textContent = deductionName;
+        headerRow2.appendChild(th);
+    });
+
+    taxHeaders.forEach(taxName => {
+        const th = document.createElement("th");
+        th.textContent = taxName;
+        headerRow2.appendChild(th);
+    });
+
+    data.response_list.forEach((employee, index) => {
+        const row = document.createElement("tr");
+
+        const grossSalaries = uniquePackages.map(pkg => {
+            const found = employee.total_gross_salary.paypackages.find(p => p.package_name === pkg);
+            return found ? found.amount : 0;
+        });
+
+        const totalLabelCell = document.getElementById("total-label-cell");
+        // Adjust total label colspan dynamically
+        const totalColspan = 4 + uniquePackages.length; // Adjust the number based on actual layout
+        totalLabelCell.setAttribute("colspan", totalColspan);
+
+        const leaveDeductions = employee.leave_deductions.unpaid_leavesdeduction || 0;
+        const unpaidLeaves = employee.leave_deductions.unpaid_leaves || 0;
+
+        const fundDeductions = uniqueFundDeductions.map(deduction => {
+            const found = employee.fund_deductions.find(d => d.name === deduction);
+            return found ? found.amount : 0;
+        });
+        
+        const fundDeductionCell = document.getElementById("total-leave-deductions-cell");
+        // Adjust total label colspan dynamically
+        const fundDeductionSpan = 2 + fundDeductions.length; // Adjust the number based on actual layout
+        fundDeductionCell.setAttribute("colspan", fundDeductionSpan);
+
+        const taxDeductions = taxHeaders.map(deductionName => {
+            const found = employee.tax_deduction.find(d => d.name === deductionName);
+            return found ? found.Total : 0;
+        });
+
+        const netPayable = employee.net_amount || 0;
+
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td><a href="{% url 'addcommision' %}" onclick="storeEmpID('${employee.empID}')">${employee.name}</a></td>
+            ${grossSalaries.map(amount => `<td>${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>`).join('')}
+            <td>${leaveDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td>${unpaidLeaves.toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+            <td>${employee.total_gross_salary.total_salary.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            ${fundDeductions.map(amount => `<td>${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>`).join('')}
+            ${taxDeductions.map(amount => `<td>${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>`).join('')}
+            <td>${netPayable.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    document.getElementById("total-salary-cell").textContent = data.totals.total_salary.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    document.getElementById("total-tax-cell").textContent = data.totals["Total Tax"].toLocaleString('en-US', { minimumFractionDigits: 2 });
+    document.getElementById("total-net-payable-cell").textContent = data.totals.net_amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
+}
+
+// Store empID in localStorage
+function storeEmpID(empID) {
+    localStorage.setItem("selectedEmpID", empID);
+}
+        fetchSalaryData();
+
+        async function handleMonthChange(selectedMonth) {
+    if (!selectedMonth) return;
+
+    const apiUrl = `${globalUrl}/api/get_monthlysalarysheet/`;
+    const requestBody = {
+        month_name: selectedMonth
+    };
+
+    try {
+        const csrftoken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken  // Include CSRF token
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Clear existing table content
+        const headerRow2 = document.getElementById("header-row-2");
+        const tableBody = document.getElementById("salary-table-body");
+        headerRow2.innerHTML = "";
+        tableBody.innerHTML = "";
+
+        // Update table with new data
+        generateTable(data);
+        displayHeaderInfo(data);
+    } catch (error) {
+        console.error("Error fetching salary data:", error);
+        alert("Failed to fetch data for the selected month. Please try again.");
+    }
+}
+
+
+    // Open modal popup
+    function openLedgerPopup() {
+        document.getElementById("ledgerPopup").style.display = "block";
+        fetchLedgers();
+    }
+
+    // Close modal popup
+    function closeLedgerPopup() {
+        document.getElementById("ledgerPopup").style.display = "none";
+    }
+
+    function fetchLedgers() {
+        fetch("{% url 'accountledger-subledgers' %}") // Django will replace this with the actual URL
+            .then(response => response.json())
+            .then(data => {
+                let ledgerSelect = document.getElementById("ledgerSelect");
+                ledgerSelect.innerHTML = '<option value="">Select a ledger</option>'; // Reset dropdown
+
+                data.forEach(ledger => {
+                    let option = document.createElement("option");
+                    option.value = ledger.id;
+                    option.textContent = ledger.ledger_name;
+                    option.dataset.subledgers = JSON.stringify(ledger.subledgers); // Store subledgers
+                    ledgerSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error("Error fetching ledgers:", error));
+    }
+
+    // Populate subledger dropdown based on selected ledger
+    function populateSubledgers() {
+        let ledgerSelect = document.getElementById("ledgerSelect");
+        let subledgerSelect = document.getElementById("subledgerSelect");
+        let selectedLedger = ledgerSelect.options[ledgerSelect.selectedIndex];
+        let subledgers = JSON.parse(selectedLedger.dataset.subledgers || "[]");
+
+        subledgerSelect.innerHTML = '<option value="">Select a subledger</option>'; // Reset
+
+        subledgers.forEach(subledger => {
+            let option = document.createElement("option");
+            option.value = subledger.id;
+            option.textContent = subledger.sub_ledger_name;
+            subledgerSelect.appendChild(option);
+        });
+    }
+
+    // Save selection and call SaveSalarySheet()
+    // function saveSelection() {
+    //     let ledgerId = document.getElementById("ledgerSelect").value;
+    //     let subledgerId = document.getElementById("subledgerSelect").value;
+
+    //     if (!ledgerId) {
+    //         alert("Please select a ledger.");
+    //         return;
+    //     }
+
+    //     // Pass selected ledger & subledger to the Save function
+    //     SaveSalarySheet(ledgerId, subledgerId);
+
+    //     closeLedgerPopup();
+    // }
+    function saveSelection() {
+    let ledgerSelect = document.getElementById("ledgerSelect");
+    let subledgerSelect = document.getElementById("subledgerSelect");
+
+    let ledgerId = ledgerSelect.value;
+    let subledgerId = subledgerSelect.value;
+    let selectedLedger = ledgerSelect.options[ledgerSelect.selectedIndex];
+
+    if (!ledgerId) {
+        alert("Please select a ledger.");
+        return;
+    }
+
+    let subledgers = JSON.parse(selectedLedger.dataset.subledgers || "[]");
+
+    // Check if the ledger has subledgers but the user hasn't selected one
+    if (subledgers.length > 0 && !subledgerId) {
+        alert("Please select a subledger.");
+        return;
+    }
+
+    // Pass selected ledger & subledger (if applicable) to the Save function
+    SaveSalarySheet(ledgerId, subledgerId || null);
+
+    closeLedgerPopup();
+}
+
+    </script>
+</body>
+</html>
+{% endblock %}

@@ -1,0 +1,720 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Employee List{% endblock %}
+{% block home %} {% endblock %}
+{% block title %}Employee List{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+        }
+        .container {
+            width: 100%;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            margin-top: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .header h1 {
+            font-size: 18px;
+            margin: 0;
+        }
+        .header button:hover {
+            background-color: #0056b3;
+        }
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 50%; /* Adjust width for alignment */
+        }
+        .actions button {
+            margin-left: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .search-container {
+            position: relative;
+            margin-left: 20px;
+            margin-right: 5px;
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        .search-container input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 250px;
+        }
+        .search-container button {
+            background-color: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 16px;
+            cursor: pointer;
+            margin-left: 10px;
+            padding: 0;
+            line-height: 1;
+            height: auto;
+        }
+        .search-container button:hover {
+            color: #333;
+        }
+        .table-container {
+            margin-top: 5px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .clickable {
+            cursor: pointer;
+            color: #007bff;
+            text-decoration: underline;
+        }
+        .update-btn{
+             background-color: green;
+             border: none;
+              padding: 10px 20px;
+              border-radius: 5px;
+             cursor: pointer;
+        }
+ 
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0, 0, 0, 0.4); 
+            padding-top: 60px;
+        }
+
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 25px;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #employeeStats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;  /* Vertically aligns the content */
+    gap: 30px; /* Adds space between the two sections */
+}
+
+#employeeCount {
+    flex: 1; /* Makes this section take up available space */
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-container {
+    flex-shrink: 0; /* Prevents the chart from shrinking */
+    width: 150px; /* You can adjust this to change the size of the chart container */
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+h2 {
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+p {
+    margin: 5px 0;
+    font-size: 16px;
+}
+.flex-details{
+ display: flex;
+ justify-content: space-around;
+}
+.flex-chart{
+ display: flex;
+ justify-content: space-around;
+}
+.button-class{
+    display: flex;
+    justify-content: space-between;
+}
+.button-all{
+    margin-bottom: 5px;
+    margin-top:5px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- <div class="header">
+  
+            
+        </div> -->
+        <!-- Employee statistics and Pie chart container -->
+        
+            <div id="employeeCount">
+                <h2>Employee Overview</h2>
+                <div class="flex-details">
+                <p style="font-weight: bold;">Total Employees : <span id="employeeCountNumber">0</span></p>
+                <p style="font-weight: bold;">Married : <span id="marriedCountNumber">0</span></p>
+                <p style="font-weight: bold;">Unmarried : <span id="unmarriedCountNumber">0</span></p>
+                <p style="font-weight: bold;">Divorced : <span id="divorcedCountNumber">0</span></p>
+                <p style="font-weight: bold;">Male : <span id="malecount">0</span></p>
+                <p style="font-weight: bold;">Female : <span id="femalecount">0</span></p>
+            </div>
+            <div class="flex-chart">
+                <div class="chart-container">
+                    <label style="font-weight: bold;">Male/Female:<span id="genderratio"></span></label>
+                    <canvas id="genderPieChart" width="120" height="120"></canvas>                   
+                </div>
+                <div class="chart-container">
+                    <canvas id="marriedPieChart" width="120" height="120"></canvas>
+                    <label style="font-weight: bold;">Married/Unmarried/Divorced:<span id="marriedratio"></span></label>
+                </div>
+            </div>
+            </div>
+        
+        <div class="button-class">
+            <div class="search-container">
+                <input type="text" id="employeeSearch" placeholder="Search by name" onkeyup="filterEmployees()">
+                <button type="button" id="clearSearch" onclick="clearSearch()" aria-label="Clear search">×</button>
+            </div>
+            <div class="actions">
+                <a href="{% url 'employee-create-page' %}">
+                    <button>Add Employee</button>
+                </a>
+                <a href="{% url 'employee-paycheck-page' %}">
+                    <button>Pay Package</button>
+                </a>
+                <a href="{% url 'employee-leave-page' %}">
+                    <button>Apply for Leave</button>
+                </a>
+            </div>
+            <button class="button-all" id="viewAllEmployees">View All Employees</button>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Picture</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Country</th>
+                        <th>DOB</th>
+                        <th>Gender</th>
+                        <th>Hiring Date</th>
+                        <th>Employee Type</th>
+                        <th>Marital Status</th>
+                        <th>Current Status</th>
+                        <th>Level</th>
+                        <th>Termination Date</th>
+                        <th>Shift</th>
+                        <th>Attendance Required</th>
+                        <th>Late Attendance Alert</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTableBody">
+      
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <form id="updateForm" enctype="multipart/form-data">
+                <div>
+                    <label for="picture">Picture:</label>
+                    <input type="file" id="picture" name="picture" accept="image/*"  />
+                </div>                
+                <div>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required />
+                </div>
+                <div>
+                    <label for="address">Address:</label>
+                    <input type="text" id="address" name="address" required />
+                </div>
+                <div>
+                    <label for="country">Country:</label>
+                    <select id="country" name="country" required>
+                        <option value="USA">USA</option>
+                        <option value="Nepal">Nepal</option>
+                        <option value="UK">UK</option>
+                        <option value="Australia">Australia</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="dob">Date of Birth:</label>
+                    <input type="date" id="dob" name="dob" required />
+                </div>
+                <div>
+                    <label for="hiringDate">Hiring Date:</label>
+                    <input type="date" id="hiringDate" name="hiringDate" required />
+                </div>
+                <div>
+                    <label for="empType">Employee Type:</label>
+                    <select id="empType" name="empType" required>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Intern">Intern</option>
+                    </select>
+                </div>
+                <div for="gender" class="radio-group">
+                    <label
+                      ><input
+                        type="radio"
+                        id="male"
+                        name="gender"
+                        value="male"
+                        required />
+                      Male</label
+                    >
+                    <label
+                      ><input
+                        type="radio"
+                        id="female"
+                        name="gender"
+                        value="female" />
+                      Female</label
+                    >
+                  </div>
+                <div>
+                    <label for="maritalStatus">Marital Status:</label>
+                    <select id="maritalStatus" name="maritalStatus" required>
+                        <option value="Married">Married</option>
+                        <option value="Unmarried">Unmarried</option>
+                        <option value="Divorced">Divorced</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="currentStatus">Current Status:</label>
+                    <select id="currentStatus" name="currentStatus" required>
+                        <option value="Enrolled">Enrolled</option>
+                        <option value="Resigned">Resigned</option>
+                        <option value="Fired">Fired</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="level">Level:</label>
+                    <select id="level" name="level" required>
+                        <option value="Senior">Senior</option>
+                        <option value="Junior">Junior</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="terminationDate">Termination Date:</label>
+                    <input type="date" id="terminationDate" name="terminationDate" required />
+                </div>
+                <div>
+                    <label for="shift">Shift:</label>
+                    <select id="shift" name="shift" required>
+                        <option value="Morning">Morning</option>
+                        <option value="Evening">Evening</option>
+                        <option value="Night">Night</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="attendanceRequired">Attendance Required:</label>
+                    <select id="attendanceRequired" name="attendanceRequired" required>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="lateAttendanceAlert">Late Attendance Alert:</label>
+                    <select id="lateAttendanceAlert" name="lateAttendanceAlert" required>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <button class="update-btn" type="submit">Update</button>
+            </form>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+       const globalUrl = "{{ url }}";
+let employees = [];
+let selectedEmployeeId = null;
+
+async function fetchEmployees() {
+    const response = await fetch(`${globalUrl}/api/get-employees/`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch employee data');
+    }
+    const data = await response.json();
+
+    // Populate marital status counts
+    document.getElementById("employeeCountNumber").innerText = data.employees_count;
+    document.getElementById("marriedCountNumber").innerText = data.married;
+    document.getElementById("unmarriedCountNumber").innerText = data.unmarried;
+    document.getElementById("divorcedCountNumber").innerText = data.divorced;
+    document.getElementById("malecount").innerText = data.male;
+    document.getElementById("femalecount").innerText = data.female;
+    document.getElementById("genderratio").innerText = `${data.male}/${data.female}`;
+    document.getElementById("marriedratio").innerText = `${data.married}/${data.unmarried}/${data.divorced}`;
+
+    
+
+    // Prepare data for the pie chart
+    const genderData = {
+        labels: ['Male', 'Female'],
+        datasets: [{
+            label: 'Gender Distribution',
+            data: [data.male, data.female],
+            backgroundColor: ['#36A2EB', '#FF6384'],
+            borderColor: ['#36A2EB', '#FF6384'],
+            borderWidth: 1
+        }]
+    };
+
+    // Create or update the pie chart
+    const ctx = document.getElementById('genderPieChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: genderData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Ensures the chart will adjust to the fixed canvas size
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return tooltipItem.label + ': ' + tooltipItem.raw;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    // Prepare data for the pie chart
+    const marriedData = {
+        labels: ['Married', 'Unmarried', 'Divorced'],
+        datasets: [{
+            label: 'Married Status',
+            data: [data.married, data.unmarried, data.divorced],
+            backgroundColor: ['#36A2EB', '#FF6384', '#ff850a'],
+            borderColor: ['#36A2EB', '#FF6384', '#ff850a'],
+            borderWidth: 1
+        }]
+    };
+
+     // Create or update the pie chart
+     const ctx2 = document.getElementById('marriedPieChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'pie',
+        data: marriedData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Ensures the chart will adjust to the fixed canvas size
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return tooltipItem.label + ': ' + tooltipItem.raw;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+
+    employees = data.employees;  // Update to use data.employees
+    displayEmployees(employees);
+}
+
+
+function displayEmployees(data) {
+    const tableBody = document.getElementById('employeeTableBody');
+    tableBody.innerHTML = '';
+
+    data.forEach(employee => {
+        const row = document.createElement('tr');
+        row.setAttribute('data-id', employee.id);  // Add data-id to identify the row
+
+        row.innerHTML = `
+            <td>${employee.pic}</td>
+            <td><span class="clickable" onclick=selectEmployee(${employee.id})">${employee.name}</span></td>
+            <td>${employee.address}</td>
+            <td>${employee.country}</td>
+            <td>${employee.dob}</td>
+            <td>${employee.gender || 'N/A'}</td>  <!-- Handle null values -->
+            <td>${employee.hiring_date || 'N/A'}</td>
+            <td>${employee.type || 'N/A'}</td>
+            <td>${employee.marital_status || 'N/A'}</td>
+            <td>${employee.current_status || 'N/A'}</td>
+            <td>${employee.level || 'N/A'}</td>
+            <td>${employee.termination_date || 'N/A'}</td>
+            <td>${employee.shift || 'N/A'}</td>
+            <td>${employee.attendance_required ? "Yes" : "No"}</td>
+            <td>${employee.lateattendance_alert ? "Yes" : "No"}</td>
+            <td>
+                <button class="update-btn" onclick="openUpdateModal(${employee.id})">Update</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Modal-related functionality (no change here)
+function openUpdateModal(employeeId) {
+    selectedEmployeeId = employeeId;
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (employee) {
+        // Set the modal input fields
+        // document.getElementById('picture').value = employee.pic;
+        document.getElementById('name').value = employee.name;
+        document.getElementById('address').value = employee.address;
+        document.getElementById('country').value = employee.country;
+        document.getElementById('dob').value = employee.dob;
+        document.getElementById('hiringDate').value = employee.hiring_date;
+        document.getElementById('empType').value = employee.type;
+        document.querySelector(`input[name="gender"][value="${employee.gender}"]`).checked = true;  // Handle gender radio buttons
+        document.getElementById('maritalStatus').value = employee.marital_status;
+        document.getElementById('currentStatus').value = employee.current_status;
+        document.getElementById('level').value = employee.level;
+        document.getElementById('terminationDate').value = employee.termination_date;
+        document.getElementById('shift').value = employee.shift;
+        document.getElementById('attendanceRequired').value = employee.attendance_required ? "Yes" : "No";
+        document.getElementById('lateAttendanceAlert').value = employee.lateattendance_alert ? "Yes" : "No";
+        
+        document.getElementById('updateModal').style.display = "block"; // Show modal
+    }
+}
+
+document.getElementById('updateForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const updatedEmployee = new FormData();
+
+    // Append data to FormData
+    updatedEmployee.append('pic', document.getElementById('picture').files[0]);  // Use the file input's file
+    updatedEmployee.append('name', document.getElementById('name').value);
+    updatedEmployee.append('address', document.getElementById('address').value);
+    updatedEmployee.append('country', document.getElementById('country').value);
+    updatedEmployee.append('dob', document.getElementById('dob').value);
+    updatedEmployee.append('hiring_date', document.getElementById('hiringDate').value);
+    updatedEmployee.append('type', document.getElementById('empType').value);
+    updatedEmployee.append('gender', document.querySelector('input[name="gender"]:checked').value);
+    updatedEmployee.append('marital_status', document.getElementById('maritalStatus').value);
+    updatedEmployee.append('current_status', document.getElementById('currentStatus').value);
+    updatedEmployee.append('level', document.getElementById('level').value);
+    updatedEmployee.append('termination_date', document.getElementById('terminationDate').value);
+    updatedEmployee.append('shift', document.getElementById('shift').value);
+    updatedEmployee.append('attendance_required', document.getElementById('attendanceRequired').value === "Yes");
+    updatedEmployee.append('lateattendance_alert', document.getElementById('lateAttendanceAlert').value === "Yes");
+
+    try {
+        const response = await fetch(`${globalUrl}/api/employee-detail/${selectedEmployeeId}/`, {
+            method: 'PATCH',
+            body: updatedEmployee, // Directly send the FormData object
+        });
+
+        if (response.ok) {
+            updateEmployeeInTable(updatedEmployee);
+            closeModal();
+        } else {
+            alert('Failed to update employee.');
+        }
+    } catch (error) {
+        console.error('Error updating employee:', error);
+    }
+});
+
+function closeModal() {
+    document.getElementById('updateModal').style.display = "none";
+}
+
+function updateEmployeeInTable(updatedEmployee) {
+    const row = document.querySelector(`tr[data-id="${selectedEmployeeId}"]`);
+    row.innerHTML = `
+        <td>${updatedEmployee.pic}</td>
+        <td><span class="clickable" onclick="selectEmployee(${selectedEmployeeId})">${updatedEmployee.name}</span></td>
+        <td>${updatedEmployee.address}</td>
+        <td>${updatedEmployee.country}</td>
+        <td>${updatedEmployee.dob}</td>
+        <td>${updatedEmployee.gender}</td>
+        <td>${updatedEmployee.hiring_date}</td>
+        <td>${updatedEmployee.type}</td>
+        <td>${updatedEmployee.marital_status}</td>
+        <td>${updatedEmployee.current_status}</td>
+        <td>${updatedEmployee.level}</td>
+        <td>${updatedEmployee.termination_date}</td>
+        <td>${updatedEmployee.shift}</td>
+        <td>${updatedEmployee.attendance_required ? "Yes" : "No"}</td>
+        <td>${updatedEmployee.lateattendance_alert ? "Yes" : "No"}</td>
+        <td>
+            <button onclick="openUpdateModal(${selectedEmployeeId})">Update</button>
+        </td>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', fetchEmployees);
+
+function filterEmployees() {
+    const searchInput = document.getElementById('employeeSearch').value.toLowerCase();
+    const filteredEmployees = employees.filter(employee => employee.name.toLowerCase().includes(searchInput));
+    displayEmployees(filteredEmployees);  
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('employeeSearch');
+    searchInput.value = ''; 
+    filterEmployees();
+}
+
+function selectEmployee(employeeId) {
+    const selectedEmployee = employees.find(emp => emp.id === employeeId);
+    if (selectedEmployee) {
+        localStorage.setItem('selectedEmployeeId', selectedEmployee.id);
+        // alert('Employee ID stored in local storage: ' + selectedEmployee.id);
+    }
+}
+///////
+// Fetch employees from a new API when the "View All Employees" button is clicked
+document.getElementById("viewAllEmployees").addEventListener("click", async function () {
+    try {
+        // Define the new API endpoint
+        const newApiUrl = `${globalUrl}/api/get-all-employees/`;
+
+        const response = await fetch(newApiUrl);
+        if (!response.ok) {
+            throw new Error("Failed to fetch employees from the new API.");
+        }
+
+        const data = await response.json();
+
+        // Update table with the new data
+        employees = data.employees;
+        displayEmployees(employees);
+
+        // Update statistics if available
+        if (data.employees_count !== undefined) {
+            document.getElementById("employeeCountNumber").innerText = data.employees_count;
+            document.getElementById("marriedCountNumber").innerText = data.married || 0;
+            document.getElementById("unmarriedCountNumber").innerText = data.unmarried || 0;
+            document.getElementById("divorcedCountNumber").innerText = data.divorced || 0;
+            document.getElementById("malecount").innerText = data.male || 0;
+            document.getElementById("femalecount").innerText = data.female || 0;
+
+            // Optional: Update pie charts here
+        }
+    } catch (error) {
+        console.error("Error fetching employees from new API:", error);
+        alert("Unable to fetch employee data. Please try again later.");
+    }
+});
+
+// Function to display employees in the table
+function displayEmployees(data) {
+    const tableBody = document.getElementById("employeeTableBody");
+    tableBody.innerHTML = "";
+
+    data.forEach((employee) => {
+        const imageUrl = `${globalUrl}${employee.pic}`;
+        const row = document.createElement("tr");
+        row.setAttribute("data-id", employee.id);
+
+        row.innerHTML = `
+           <td><img src="${imageUrl}" alt="Employee Picture" style="width:50px; height:50px; border-radius:50%;"></td>
+           <td><span class="clickable" onclick="selectEmployee(${employee.id})">${employee.name}</span></td>
+            <td>${employee.address}</td>
+            <td>${employee.country}</td>
+            <td>${employee.dob || "N/A"}</td>
+            <td>${employee.gender || "N/A"}</td>
+            <td>${employee.hiring_date || "N/A"}</td>
+            <td>${employee.type || "N/A"}</td>
+            <td>${employee.marital_status || "N/A"}</td>
+            <td>${employee.current_status || "N/A"}</td>
+            <td>${employee.level || "N/A"}</td>
+            <td>${employee.termination_date || "N/A"}</td>
+            <td>${employee.shift || "N/A"}</td>
+            <td>${employee.attendance_required ? "Yes" : "No"}</td>
+            <td>${employee.lateattendance_alert ? "Yes" : "No"}</td>
+            <td>
+                <button onclick="openUpdateModal(${employee.id})">Update</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+
+    </script>
+</body>
+</html>
+{% endblock %}

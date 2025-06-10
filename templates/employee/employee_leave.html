@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Employee Leave{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Leave</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h2 {
+            font-size: 22px;
+            margin: 0;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        input, textarea, button {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .details {
+            margin-top: 20px;
+        }
+        .details div {
+            margin-bottom: 10px;
+        }
+        .details span {
+            font-weight: bold;
+        }
+        .employee-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            flex: 2;
+        }
+        .employee-details div {
+            font-size: 14px;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .employee-details .label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .employee-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .employee-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Employee Leave</h2>
+        </div>
+        <h2>Employee Details</h2>
+        <div class="content">
+            <div class="employee-details" id="employeeDetails">
+                <!-- Employee details will be populated here -->
+            </div>
+        </div>
+        <form id="leaveForm">
+            <div>
+                <label for="fromDate">From Date</label>
+                <input type="date" id="fromDate" required onchange="calculateDays()">
+            </div>
+            <div>
+                <label for="toDate">To Date</label>
+                <input type="date" id="toDate" required onchange="calculateDays()">
+            </div>
+            <div>
+                <label for="reason">Reason for Leave</label>
+                <textarea id="reason" rows="4" required></textarea>
+            </div>
+            <button type="button" onclick="submitLeave()">Submit</button>
+        </form>
+        <div class="details" id="leaveDetails">
+            <h3>Leave Details</h3>
+            <div><span>Number of Days:</span> <span id="noOfDays">0</span></div>
+            <div><span>Number of Paid Leaves:</span> <span id="paidLeaves">0</span></div>
+            <div><span>Number of Unpaid Leaves:</span> <span id="unpaidLeaves">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        const empID = localStorage.getItem('selectedEmployeeId'); // Replace with the actual employee ID
+        const globalUrl = "{{ url }}"; // Replace with your global base URL
+        const url = `${globalUrl}/api/search-employee/`;
+
+        async function fetchEmployeeById(empID) {
+            if (!empID) {
+                alert("No employee ID found in local storage.");
+                return;
+            }
+
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                alert("CSRF token not found. Please reload the page.");
+                return;
+            }
+
+            try {
+                console.log("Fetching employee data for empID:", empID);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({ emp_id: empID }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch employee data');
+                }
+
+                const employee = await response.json();
+                console.log("Employee data:", employee);
+                displayEmployeeDetails(employee);
+            } catch (error) {
+                console.error('Error:', error);
+                alert("Error fetching employee data.");
+            }
+        }
+
+        function displayEmployeeDetails(employee) {
+            const employeeDetailsContainer = document.getElementById('employeeDetails');
+            
+            // Clear existing details
+            employeeDetailsContainer.innerHTML = '';
+
+            // Populate employee details dynamically
+            employeeDetailsContainer.innerHTML = `
+                <div><span class="label">Name:</span> ${employee.name}</div>
+                <div><span class="label">Address:</span> ${employee.address}</div>
+                <div><span class="label">Current Status:</span> ${employee.current_status || 'N/A'}</div>
+                <div><span class="label">Level:</span> ${employee.level || 'N/A'}</div>         
+            `;
+        }
+
+        // Calculate number of days dynamically
+        function calculateDays() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+
+            if (fromDate && toDate) {
+                const start = new Date(fromDate);
+                const end = new Date(toDate);
+                const diffTime = Math.abs(end - start);
+                const diffDays = diffTime / (1000 * 60 * 60 * 24) + 1; // Include the start day
+                document.getElementById('noOfDays').innerText = diffDays;
+                fetchLeaveDetails(diffDays);
+            }
+        }
+
+        async function fetchLeaveDetails(noOfDays) {
+            try {
+                console.log("Fetching leave details for empID:", empID);
+                
+                const response = await fetch(`${globalUrl}/api/get-employee-paidleaves/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({ emp_ID: empID }),
+                });
+
+                console.log("Response status:", response.status);
+                
+                if (response.ok) {
+                    const leaveDetails = await response.json();
+                    console.log("Leave Details:", leaveDetails);
+                    
+                    const paidLeaves = leaveDetails.paidleaves || 0;
+                    const unpaidLeaves = Math.max(0, noOfDays - paidLeaves);
+                    
+                    document.getElementById('paidLeaves').innerText = paidLeaves;
+                    document.getElementById('unpaidLeaves').innerText = unpaidLeaves;
+                } else {
+                    const errorData = await response.json();
+                    console.error("Error response:", errorData);
+                    alert("Failed to fetch leave details: " + errorData.message || "Unknown error.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error fetching leave details.");
+            }
+        }
+
+        async function submitLeave() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const reason = document.getElementById('reason').value;
+
+            if (!fromDate || !toDate || !reason) {
+                alert("Please fill all the fields.");
+                return;
+            }
+
+            try {
+                const csrfToken = getCSRFToken(); // Fetch CSRF token
+                const response = await fetch(`${globalUrl}/api/leave-apply/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        empID,
+                        leave_date_from: fromDate,
+                        leave_date_to: toDate,
+                        reason,
+                    }),
+                });
+
+                if (response.ok) {
+                    alert("Leave submitted successfully!");
+                } else {
+                    const errorData = await response.json();
+                    console.error("Error response:", errorData);
+                    alert("Failed to submit leave: " + errorData.message || "Unknown error.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error submitting leave.");
+            }
+        }
+
+        function getCSRFToken() {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith('csrftoken=')) {
+                    return cookie.substring('csrftoken='.length, cookie.length);
+                }
+            }
+            return null;
+        }
+
+        // Call the API when the page loads
+        window.onload = () => {
+            fetchEmployeeById(empID);  // Make sure to fetch employee by id on load
+            fetchLeaveDetails(0); // Assuming 0 days initially, will be updated after user inputs dates.
+        };
+    </script>
+</body>
+</html>
+{% endblock %}
