@@ -33,7 +33,7 @@ urlpatterns += [
     path("getcanteen-product", GetCanteenProductRate.as_view(), name= "getcanteen-product")
 ]
 from api.views.product import PurchaseProductList
+
 urlpatterns += [
-    # path("product-list/", ProductList.as_view(), name="api_product_list"),
     path("purchaseproduct-list/", PurchaseProductList.as_view({'get':'list'}), name="api_branch_purchaseproduct_list"),
     ]

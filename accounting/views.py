@@ -1597,8 +1597,15 @@ class LedgerDetailView(View):
          
 
             debit_entries_test3 = TblCrJournalEntry.objects.filter(Q(journal_entry_id=journal_id1) & Q(ledger_id=ledger_id))
-            # date = [debit_entry.created_at.astimezone(kathmandu_timezone).strftime("%Y-%m-%d %H:%M:%S") for debit_entry in debit_entries_test3]
-            date = [debit_entry.journal_entry.entry_date.strftime("%Y-%m-%d") for debit_entry in debit_entries_test3]
+
+            # date = [debit_entry.journal_entry.entry_date.strftime("%Y-%m-%d") for debit_entry in debit_entries_test3]
+            date = []
+            for debit_entry in debit_entries_test3:
+                if debit_entry.journal_entry.entry_date is None:
+                    print(f"Missing journal_entry for TblCrJournalEntry ID: {debit_entry.id}, journal_entry_id={debit_entry.journal_entry_id}")
+                else:
+                    date.append(debit_entry.journal_entry.entry_date.strftime("%Y-%m-%d"))
+
             credit  = [debit_entry.credit_amount for debit_entry in debit_entries_test3]
             # print(credit)
             particulars  = [debit_entry.particulars for debit_entry in debit_entries_test3]

@@ -11,27 +11,6 @@ from rest_framework.permissions import IsAuthenticated
 
 from api.serializers.canteen import StudentAttendanceSerializer
 from canteen.models import tblmissedattendance_butcharged
-# class StudentAttendanceViewSet(ModelViewSet):
-#     permission_classes = [IsAuthenticated]
-
-#     queryset = StudentAttendance.objects.filter(is_deleted= False, status=True)
-#     serializer_class = StudentAttendanceSerializer
-
-#     # def delete(self, request, *args, **kwargs):
-#     def destroy(self, request, *args, **kwargs):
-#         # Retrieve the object to be deleted
-#         student_attendance = self.get_object()
-
-#         # Check if the attendance record is associated with a bill
-#         if student_attendance.bill_created == True:
-#             return Response(
-#                 {"detail": "Cannot delete attendance because a bill exists."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-        
-#         # If no bill exists, proceed with deletion
-#         return super().destroy(request, *args, **kwargs)
-
 
 class StudentAttendanceViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -199,18 +178,6 @@ class StudentAttendanceListCreate(APIView):
                     
                     print(next_working_days)
                     for working_day in next_working_days:
-                        # Check if there are any missed attendance records for this student
-                        # on these future working days that were created based on previous absence
-                        # tblmissedattendance.objects.filter(
-                        #     student__id=student_id,
-                        #     missed_date=working_day.working_date
-                        # ).delete()
-                        
-                        # tblmissedattendance_butcharged.objects.filter(
-                        #     student__id=student_id,
-                        #     missed_date=working_day.working_date
-                        # ).delete()
-                        
 
                         tblmissedobj = tblmissedattendance.objects.filter(
                             student__id=student_id,
@@ -232,15 +199,6 @@ class StudentAttendanceListCreate(APIView):
                         
                 except Exception as e:
                     print(f"Error processing future working days: {str(e)}")
-
-        # veg_canteen_product = Product.objects.filter(is_canteen_item=True, lunch_type="veg").first()
-        # veg_product_rate = veg_canteen_product.price if veg_canteen_product else 0.0
-
-        # nonveg_canteen_product = Product.objects.filter(is_canteen_item=True, lunch_type="nonveg").first()
-        # nonveg_product_rate = nonveg_canteen_product.price if nonveg_canteen_product else 0.0
-
-        # egg_canteen_product = Product.objects.filter(is_canteen_item=True, lunch_type="egg").first()
-        # egg_product_rate = egg_canteen_product.price if egg_canteen_product else 0.0
 
 
         for datum in data:
@@ -291,7 +249,6 @@ class StudentAttendanceListCreate(APIView):
                 datum["product"] = veg_canteen_product.id
                 datum["rate"] = veg_product_rate
                 datum["total"] = veg_product_rate                            
-        # Serialize and save the attendance records if no existing entries found
         serializer = StudentAttendanceSerializer(data=data, many=True)
         print(data)
 
@@ -349,14 +306,6 @@ class DatewiseStudentAggregateAttendanceList(APIView):
                 .annotate(no_of_entries=Count('id'))  
                 .order_by('-no_of_entries')  
             )
-        # # Query with date range filter
-        # meal_eatens_by_students = (
-        #     StudentAttendance.objects
-        #     .filter(eaten_date__range=[from_date, to_date])  # Date range filter
-        #     .values('student', 'student__name', 'student__student_class','student__roll_no', 'student__section', 'rate', 'total' )  
-        #     .annotate(no_of_entries=Count('id'))  
-        #     .order_by('-no_of_entries')  
-        # )
         meal_eatens_by_students = (
             StudentAttendance.objects
             .filter(status=True, is_deleted=False, bill_created=False, eaten_date__range=[from_date, to_date])
@@ -598,51 +547,6 @@ class VerifyToken(APIView):
 from user.models import Customer
 from canteen.models import PreInformedLeave
 
-# class StudentsServedData(APIView):
-#     permission_classes = [IsAuthenticated]
-
-
-#     def get(self, request):
-#         from datetime import datetime
-#         from django.utils import timezone
-
-#         now = timezone.now()  # safer for timezone-aware datetimes
-
-#         try:
-#             total_no_students = Customer.objects.filter(student_class__isnull=False, status=True, is_deleted=False).count()
-
-#             total_students_served_today = StudentAttendance.objects.filter(eaten_date=now.date(),status=True,
-#                     is_deleted=False).count()
-            
-#             total_no_students_on_leave = PreInformedLeave.objects.filter(start_date__lte=now.date(),end_date__gte=now.date()).count()
-                
-#             today_data = {
-#                     "total_no_students": total_no_students,
-#                     "total_students_served": total_students_served_today,
-#                     "total_no_of_students_to_serve": total_no_students -  total_no_students_on_leave 
-#                 }
-
-
-
-#             total_students_served_month = StudentAttendance.objects.filter(
-#                     eaten_date__year=now.year,
-#                     eaten_date__month=now.month,
-#                     status=True,
-#                     is_deleted=False
-#                 ).count()
-#             month_data = {
-#                     "total_no_students": total_no_students,
-#                     "total_students_served": total_students_served_month
-#                 }
-#             data = {
-#                 "today": today_data,
-#                 "month": month_data
-#             }
-#             return Response(data, 200)
-#         except Exception as e :
-#             return Response({"error": str(e)}, 400)
-
-
 class StudentsServedData(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -758,26 +662,7 @@ class StudentsServedData(APIView):
 
 
 from canteen.utils import create_advance_bills_for_class_by_month
-# class CheckoutClassBillsByMonth(APIView):
-#     permission_classes = [IsAuthenticated]
 
-#     def post(self, request, *args, **kwargs):
-#         data = request.data
-#         student_class = data.get("class", None)
-#         month = data.get("month", None)
-#         year = data.get("year", None)
-
-#         if not all([student_class, month, year]):
-#             return Response({"error": "Class, month and year are required"}, status=400)
-
-#         try:
-#             month = int(month)
-#             year = int(year)
-#             create_advance_bills_for_class_by_month(student_class, month, year)
-#             return Response({"data": f"Bills created for class {student_class} for {month}/{year}"}, status=200)
-#         except Exception as e:
-#             print(f"Error in creating bill for class {student_class} with {e}")
-#             return Response({"error": f"Error in creating bills for class {student_class}"}, status=400)
 
 class CheckoutClassBillsByMonth(APIView):
     permission_classes = [IsAuthenticated]

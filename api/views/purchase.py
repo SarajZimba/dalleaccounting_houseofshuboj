@@ -377,13 +377,16 @@ from product.models import (
 from purchase.models import  Purchase, Vendor ,ProductPurchase, TblpurchaseEntry
 from accounting.models import AccountLedger,AccountSubLedger, AccountSubLedgerTracking, TblJournalEntry,TblDrJournalEntry, TblCrJournalEntry
 from bill.utils import update_cumulative_ledger_bill, create_cumulative_ledger_bill
+
 from accounting.utils import change_date_to_datetime
+from rest_framework.permissions import IsAuthenticated
 
 class ProductPurchaseAPI(APIView):
+    permission_classes = [IsAuthenticated]
     @transaction.atomic
     def post(self, request):
         data = request.data
-
+        print(data)
         try:
             # Basic purchase info
             purchase = Purchase.objects.create(
@@ -406,13 +409,14 @@ class ProductPurchaseAPI(APIView):
 
             for item in data["items"]:
                 product = get_object_or_404(Product, pk=item["product_id"])
-                ledger = get_object_or_404(AccountLedger, pk=item["ledger_id"])
+
+                ledger = get_object_or_404(AccountLedger, ledger_name= "Inventory Expenses")
                 quantity = float(item["quantity"])
                 rate = float(item["rate"])
                 item_total = decimal.Decimal(quantity * rate)
 
                 # Create subledger
-                subledger_name = f'{product.title} ({product.category.title}) - Purchase'
+                subledger_name = f'{product.title} ({product.category.title}) - Expense'
                 subledger, created = AccountSubLedger.objects.get_or_create(
                     sub_ledger_name=subledger_name,
                     ledger=ledger,
@@ -437,7 +441,7 @@ class ProductPurchaseAPI(APIView):
                     item_total=item_total
                 )
 
-                ledger_totals[item["ledger_id"]] = ledger_totals.get(item["ledger_id"], 0) + item_total
+                ledger_totals[ledger.id] = ledger_totals.get(ledger.id, 0) + item_total
                 total_quantity += quantity
 
             # Save purchase entry for audit
@@ -511,19 +515,20 @@ class ProductPurchaseAPI(APIView):
         credit_particulars = f"Automatic: To "
         if payment_mode.lower() == "credit":
             try:
-                vendor_ledger = AccountLedger.objects.get(ledger_name=str(vendor_id) + vendor_name)
+                vendor_ledger = AccountLedger.objects.get(ledger_name=str(vendor_id) + ' ' + vendor_name)
+                vendor_ledger.total_value += total_amount
+                vendor_ledger.save()
+                update_cumulative_ledger_bill(vendor_ledger, entry_datetime)
             except AccountLedger.DoesNotExist:
                 chart = AccountChart.objects.get(group__iexact='Sundry Creditors')
                 vendor_ledger = AccountLedger.objects.create(
                     ledger_name=str(vendor_id) + ' ' + vendor_name,
-                    total_value=0,
+                    total_value=total_amount,
                     is_editable=True,
                     account_chart=chart
                 )
                 create_cumulative_ledger_bill(vendor_ledger, entry_datetime)
-            vendor_ledger.total_value += total_amount
-            vendor_ledger.save()
-            update_cumulative_ledger_bill(vendor_ledger, entry_datetime)
+
             ledger = vendor_ledger
         elif payment_mode.lower() == "mobile payment":
             ledger = get_object_or_404(AccountLedger, ledger_name='Mobile Payments')

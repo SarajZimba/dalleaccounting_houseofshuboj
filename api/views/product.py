@@ -500,39 +500,19 @@ class GetCanteenProductRate(APIView):
         
 
 from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 
 class PurchaseProductList(viewsets.ViewSet):
-    # serializer_class = ProductSerializer
-    # pagination_class = None
 
-    # def get_queryset(self):
-    #     return Product.objects.active()
+    permission_classes = [IsAuthenticated]
     
     def list(self, request):
-        jwt_token = request.META.get("HTTP_AUTHORIZATION")
-        jwt_token = jwt_token.split()[1]
-        try:
-            token_data = jwt.decode(jwt_token, options={"verify_signature": False})  # Disable signature verification for claims extraction
-            user_id = token_data.get("user_id")
-            username = token_data.get("username")
-            role = token_data.get("role")
-            # You can access other claims as needed 
-
-            # Assuming "branch" is one of the claims, access it
-            branch = token_data.get("branch")
-
-            # Print the branch
-            print("Branch:", branch)
-        except jwt.ExpiredSignatureError:
-            print("Token has expired.")
-        except jwt.DecodeError:
-            print("Token is invalid.")
 
         org = Organization.objects.first()
         
         all_products = Product.objects.filter(
                 is_deleted = False,
         )
-        all_products_serializer = ProductSerializerList(all_products, many=True, context={"branch": branch})
+        all_products_serializer = ProductSerializerList(all_products, many=True)
 
         return Response(all_products_serializer.data)

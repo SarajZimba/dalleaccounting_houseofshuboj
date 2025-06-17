@@ -27,6 +27,5 @@ urlpatterns = [
     path('create-subledger/', SubledgerCreateAPIView.as_view(), name = 'subledger-create' ),
     path('create-accountledger/', AccountLedgerCreateAPIView.as_view(), name = 'ledger-create' ),
     path('accountledger-subledgers/', AccountLedgerWithSubledgersAPIView.as_view(), name = 'accountledger-subledgers' ),
-
-
+    
 ]
